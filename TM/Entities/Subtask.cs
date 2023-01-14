@@ -225,6 +225,9 @@
             foreach (Subtask item in SubTasks)
                 h = HashCode.Combine(h, item.GetHashCode());
 
+            foreach (ProtectedItem pi in ProtectedItems)
+                h = HashCode.Combine(h, pi.GetHashCode());
+
             return h;
         }
     }

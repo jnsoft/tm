@@ -83,7 +83,7 @@ public class ProtectedItem : ICloneable
 
         foreach (NodeModel n in node.Nodes)
         {
-            if (n.Parent == node.Id && n.NodeType == ProjectItemType.Subtask)
+            if (n.Parent == node.Id && n.NodeType == ProjectItemType.Protected)
                 Items.Add(new ProtectedItem(n));
         }
 

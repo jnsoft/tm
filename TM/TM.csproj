@@ -7,4 +7,16 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="tasks.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="jnUtil" Version="1.7.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="tasks.ico" />
+  </ItemGroup>
+
 </Project>

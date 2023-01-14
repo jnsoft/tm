@@ -151,7 +151,7 @@ public class MainWindowModel : INotifyPropertyChanged
             else if (!n.IsLeaf)
                 n.DeleteNode(node);
         }
-        OnPropertyChanged("Nodes");
+        OnPropertyChanged(nameof(Nodes));
     }
 
     public void AddNode(NodeModel node)

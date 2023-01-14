@@ -104,8 +104,8 @@
         </ObjectDataProvider>
 
         <!-- Converters -->
-        <local:PriorityToStringConverter x:Key="helpers:PriorityConverter"/>
-        <local:TabSizeConverter x:Key="tabSizeConverter" />
+        <helpers:PriorityToStringConverter x:Key="PriorityConverter"/>
+        <helpers:TabSizeConverter x:Key="tabSizeConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- Styles -->

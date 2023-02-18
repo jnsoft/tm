@@ -84,7 +84,7 @@ steps:
     publishWebProjects: false
     projects: '**/$(appName).csproj'
     modifyOutputPath: true
-    arguments: '-o $(build.artifactstagingdirectory) -r win-x64 -c Release -f netcoreapp3.1 -p:PublishSingleFile=true -p:SelfContained=false'
+    arguments: '-o $(build.artifactstagingdirectory) -r win-x64 -c Release -f net6.0 -p:PublishSingleFile=true -p:SelfContained=false'
 
 - task: PowerShell@2
   displayName: 'Rename output'

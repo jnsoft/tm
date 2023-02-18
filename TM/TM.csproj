@@ -11,6 +11,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <Version>1.2.2</Version>
   </PropertyGroup>
 
   <ItemGroup>

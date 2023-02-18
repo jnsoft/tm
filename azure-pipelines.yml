@@ -1,0 +1,100 @@
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+      - README.md
+      - azure-pipelines.yml
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  projects: '**/TM.csproj'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  appName: 'TM'
+  version: ''
+
+name: '$(Date:yyyyMMdd)$(Rev:.r)'
+
+steps:
+
+- task: PowerShell@2
+  displayName: 'Get version number from project files'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $xml = [Xml] (Get-Content **\*$(appName).csproj)
+      $version = $xml.Project.PropertyGroup.Version
+      echo $version
+      echo "##vso[task.setvariable variable=version]$version"
+- task: PowerShell@2
+  displayName: 'Set version number'
+  inputs:
+    targetType: 'inline'
+    script: |
+      [string] $buildName = "$(version).$(Build.BuildNumber)"
+      echo "Set name of build to $buildName"
+      echo "##vso[build.updatebuildnumber]$buildName"
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore'
+  inputs:
+    command: 'restore'
+    projects: '$(Solution)'
+    arguments: --configuration $(buildConfiguration)
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build'
+  inputs:
+    command: 'build'
+    projects: '$(Solution)'
+    arguments: --configuration $(buildConfiguration)
+
+- task: DotNetCoreCLI@2
+  displayName: 'Run tests'
+  inputs:
+    command: 'test'
+    projects: '**/*[Tt]est*/*.csproj'
+    publishTestResults: true
+    arguments: '--configuration $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage results'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '**/*coverage.cobertura.xml'
+
+
+#- task: DotNetCoreCLI@2
+#  displayName: 'Pack'
+#  inputs:
+#    command: 'pack'
+#    packagesToPack: '**/$(appName).csproj'
+#    includesymbols: false
+#    versioningScheme: 'off'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet publish'
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**/$(appName).csproj'
+    modifyOutputPath: true
+    arguments: '-o $(build.artifactstagingdirectory) -r win-x64 -c Release -f net6.0-windows -p:PublishSingleFile=true -p:SelfContained=false'
+
+- task: PowerShell@2
+  displayName: 'Rename output'
+  inputs:
+    targetType: 'inline'
+    script: 'Rename-Item -Path "$(build.artifactstagingdirectory)\$(appName).zip" -NewName "$(build.artifactstagingdirectory)\$(appName)_v$(version).zip"'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  inputs:
+    artifactName: 'drop' 
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+    

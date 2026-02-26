@@ -501,7 +501,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 byte[] salt;
                 try
                 {
-                    salt = macFile.SplitToLines()[1].FromBase64();
+                    salt = lines[1].FromBase64();
                 }
                 catch (Exception ex)
                 {

@@ -35,7 +35,7 @@ jobs:
         run: dotnet test --no-build --verbosity normal
 
       - name: Publish
-        run: dotnet publish ${{ env.AppName }} -c Release -o dist
+        run: dotnet publish ./${{ env.AppName }}/${{ env.AppName }}.csproj -c Release -r win-x64 -o dist
 
       - name: Create GitHub Release and upload asset
         uses: softprops/action-gh-release@v2

@@ -470,8 +470,49 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (FileHelper.GetFileName(out string macPath, $"Select stored HMAC file"))
             {
                 string macFile = File.ReadAllText(macPath);
-                byte[] mac = macFile.SplitToLines()[0].FromPrettyPrint();
-                byte[] salt = macFile.SplitToLines()[1].FromBase64();
+
+                var lines = macFile.SplitToLines();
+                if (lines.Length < 2)
+                {
+                    MessageBox.Show(
+                        $"Invalid HMAC file format in:\n{macPath}\n\nExpected 2 lines:\n1) HMAC\n2) Base64 salt",
+                        "HMAC verification error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+
+                byte[] mac;
+                try
+                {
+                    mac = lines[0].FromPrettyPrint();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Invalid HMAC value in:\n{macPath}\n\n{ex.Message}",
+                        "HMAC verification error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                byte[] salt;
+                try
+                {
+                    salt = macFile.SplitToLines()[1].FromBase64();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Invalid salt value in:\n{macPath}\n\n{ex.Message}",
+                        "HMAC verification error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
                 byte[] key = ViewModel.DeriveKey("HMAC", salt, 64);
 
 

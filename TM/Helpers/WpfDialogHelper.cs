@@ -23,8 +23,15 @@ public static class WpfDialogHelper
 
         WrapPanel wp = new WrapPanel();
         wp.HorizontalAlignment = HorizontalAlignment.Center;
-        wp.Children.Add(getButton("Ok", ok_Click, new Thickness(0, 0, 10, 0)));
-        wp.Children.Add(getButton("Cancel", cancel_Click, new Thickness(10, 0, 0, 0)));
+        
+        var okButton = getButton("Ok", ok_Click, new Thickness(0, 0, 10, 0));
+        okButton.IsDefault = true;
+
+        var cancelButton = getButton("Cancel", cancel_Click, new Thickness(10, 0, 0, 0));
+        cancelButton.IsCancel = true;
+
+        wp.Children.Add(okButton);
+        wp.Children.Add(cancelButton);
         wp.Margin = new Thickness(0, 20, 0, 0);
 
         StackPanel sp = new StackPanel();
@@ -68,8 +75,15 @@ public static class WpfDialogHelper
 
         WrapPanel wp = new WrapPanel();
         wp.HorizontalAlignment = HorizontalAlignment.Center;
-        wp.Children.Add(getButton("Ok", ok_Click, new Thickness(0, 0, 10, 0)));
-        wp.Children.Add(getButton("Cancel", cancel_Click, new Thickness(10, 0, 0, 0)));
+
+        var okButton = getButton("Ok", ok_Click, new Thickness(0, 0, 10, 0));
+        okButton.IsDefault = true;
+
+        var cancelButton = getButton("Cancel", cancel_Click, new Thickness(10, 0, 0, 0));
+        cancelButton.IsCancel = true;
+
+        wp.Children.Add(okButton);
+        wp.Children.Add(cancelButton);
         wp.Margin = new Thickness(0, 20, 0, 0);
 
         StackPanel sp = new StackPanel();

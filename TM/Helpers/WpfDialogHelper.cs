@@ -45,9 +45,10 @@ public static class WpfDialogHelper
         // add handler for enter key press 
         pw.KeyDown += (s, e) =>
         {
-            if (e.Key == System.Windows.Input.Key.Enter)
+            if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Return)
             {
                 w.DialogResult = true;
+                e.Handled = true;
             }
         };
 

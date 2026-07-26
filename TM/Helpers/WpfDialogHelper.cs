@@ -42,6 +42,16 @@ public static class WpfDialogHelper
 
         pw.Focus();
 
+        // add handler for enter key press 
+        pw.KeyDown += (s, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Return)
+            {
+                w.DialogResult = true;
+                e.Handled = true;
+            }
+        };
+
         if (w.ShowDialog() == true)
         {
             password = pw.SecurePassword;

@@ -6,7 +6,7 @@ public static class WpfDialogHelper
 {
     public static bool GetPassword(string Title, string DialogMessage, out SecureString password)
     {
-        password = null;
+        password = new SecureString();
 
         Window w = new Window();
         //  w.Owner = owner;

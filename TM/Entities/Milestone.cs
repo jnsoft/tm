@@ -143,7 +143,9 @@ public class Milestone : ProjectItem, ICloneable
             XmlElement tasks = doc.CreateElement("tasks");
             for (int i = 0; i < Tasks.Count; i++)
             {
-                XmlNode task = doc.ImportNode(Tasks[i].ToXml().DocumentElement, true);
+                var element = Tasks[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for task at index {i}.");
+                XmlNode task = doc.ImportNode(element, true);
                 tasks.AppendChild(task);
             }
             milestone.AppendChild(tasks);
@@ -154,7 +156,7 @@ public class Milestone : ProjectItem, ICloneable
             XmlElement items = doc.CreateElement("items");
             for (int i = 0; i < ProtectedItems.Count; i++)
             {
-                XmlNode pi = doc.ImportNode(ProtectedItems[i].ToXml().DocumentElement, true);
+                XmlNode pi = doc.ImportNode(ProtectedItems[i].ToXml().DocumentElement!, true);
                 items.AppendChild(pi);
             }
             milestone.AppendChild(items);
@@ -195,11 +197,9 @@ public class Milestone : ProjectItem, ICloneable
         return that;
     }
 
-    public override bool Equals(object o)
+    public override bool Equals(object? o)
     {
-        Milestone x = o as Milestone;
-
-        if (x == null)
+        if (o is not Milestone x)
             return false;
 
         return GetHashCode() == x.GetHashCode();

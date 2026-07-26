@@ -140,7 +140,9 @@ public class Task : ProjectItem, ICloneable
             XmlElement subtasks = doc.CreateElement("subtasks");
             for (int i = 0; i < SubTasks.Count; i++)
             {
-                XmlNode subtask = doc.ImportNode(SubTasks[i].ToXml().DocumentElement, true);
+                var element = SubTasks[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for subtask at index {i}.");
+                XmlNode subtask = doc.ImportNode(element, true);
                 subtasks.AppendChild(subtask);
             }
             task.AppendChild(subtasks);
@@ -151,7 +153,9 @@ public class Task : ProjectItem, ICloneable
             XmlElement items = doc.CreateElement("items");
             for (int i = 0; i < ProtectedItems.Count; i++)
             {
-                XmlNode pi = doc.ImportNode(ProtectedItems[i].ToXml().DocumentElement, true);
+                var element = ProtectedItems[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for protected item at index {i}.");
+                XmlNode pi = doc.ImportNode(element, true);
                 items.AppendChild(pi);
             }
             task.AppendChild(items);
@@ -192,11 +196,9 @@ public class Task : ProjectItem, ICloneable
         return that;
     }
 
-    public override bool Equals(object o)
+    public override bool Equals(object? o)
     {
-        Task x = o as Task;
-
-        if (x == null)
+        if (o is not Task x)
             return false;
 
         return GetHashCode() == x.GetHashCode();

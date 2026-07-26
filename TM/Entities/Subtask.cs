@@ -140,7 +140,9 @@
                 XmlElement subtasks = doc.CreateElement("subtasks");
                 for (int i = 0; i < SubTasks.Count; i++)
                 {
-                    XmlNode inner_subtask = doc.ImportNode(SubTasks[i].ToXml().DocumentElement, true);
+                    var element = SubTasks[i].ToXml().DocumentElement
+                        ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for subtask at index {i}.");
+                    XmlNode inner_subtask = doc.ImportNode(element, true);
                     subtasks.AppendChild(inner_subtask);
                 }
                 subtask.AppendChild(subtasks);
@@ -151,7 +153,9 @@
                 XmlElement items = doc.CreateElement("items");
                 for (int i = 0; i < ProtectedItems.Count; i++)
                 {
-                    XmlNode pi = doc.ImportNode(ProtectedItems[i].ToXml().DocumentElement, true);
+                    var element = ProtectedItems[i].ToXml().DocumentElement
+                        ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for protected item at index {i}.");
+                    XmlNode pi = doc.ImportNode(element, true);
                     items.AppendChild(pi);
                 }
                 subtask.AppendChild(items);
@@ -208,11 +212,9 @@
             return that;
         }
 
-        public override bool Equals(object o)
+        public override bool Equals(object? o)
         {
-            Subtask x = o as Subtask;
-
-            if (x == null)
+            if (o is not Subtask x)
                 return false;
 
             return GetHashCode() == x.GetHashCode();

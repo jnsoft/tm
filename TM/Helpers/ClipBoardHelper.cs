@@ -4,7 +4,7 @@ namespace TM.Helpers;
 
 public static class ClipBoardHelper
 {
-    private static DispatcherTimer timer = new DispatcherTimer();
+    private static readonly DispatcherTimer timer = new();
     public static void LoadClipBoard(string text, int seconds = 15)
     {
         //System.Timers.Timer timer = new System.Timers.Timer(seconds * 1000);
@@ -21,9 +21,9 @@ public static class ClipBoardHelper
         Clipboard.SetText(text);
     }
 
-    private static void ClearClipBoardEvent(Object sender, EventArgs e)
+    private static void ClearClipBoardEvent(object? sender, EventArgs e)
     {
         Clipboard.Clear();
-        ((DispatcherTimer)sender).Stop();
+        ((DispatcherTimer)sender!).Stop();
     }
 }

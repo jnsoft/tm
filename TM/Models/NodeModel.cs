@@ -516,9 +516,9 @@ public class NodeModel : INotifyPropertyChanged
 
     #endregion
 
-    public NodeModel DeepCopy(bool convertTypes = false, NodeModel parent = null)
+    public NodeModel DeepCopy(bool convertTypes = false, NodeModel? parent = null)
     {
-        NodeModel n = new NodeModel();
+        NodeModel n = new();
 
         if (convertTypes)
         {

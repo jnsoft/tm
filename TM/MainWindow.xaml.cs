@@ -32,53 +32,53 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     // drag & drop
     private Point _lastMouseDown;
-    private TreeViewItem draggedItem, _target;
-    private TreeViewItem lastSelectedTreeViewItem;
+    private TreeViewItem? draggedItem, _target;
+    private TreeViewItem? lastSelectedTreeViewItem;
 
     #region Commands
 
-    public static RelayCommand NewCommand { get; private set; }
-    public static RelayCommand OpenCommand { get; private set; }
-    public static RelayCommand SaveCommand { get; private set; }
-    public static RelayCommand SaveAsCommand { get; private set; }
-    public static RelayCommand ExitCommand { get; private set; }
-    public static RelayCommand LockCommand { get; private set; }
-    public static RelayCommand ChangePasswordCommand { get; private set; }
-    public static RelayCommand SaveUnencryptedCommand { get; private set; }
-    public static RelayCommand LoadUnencryptedCommand { get; private set; }
+    public static RelayCommand? NewCommand { get; private set; }
+    public static RelayCommand? OpenCommand { get; private set; }
+    public static RelayCommand? SaveCommand { get; private set; }
+    public static RelayCommand? SaveAsCommand { get; private set; }
+    public static RelayCommand? ExitCommand { get; private set; }
+    public static RelayCommand? LockCommand { get; private set; }
+    public static RelayCommand? ChangePasswordCommand { get; private set; }
+    public static RelayCommand? SaveUnencryptedCommand { get; private set; }
+    public static RelayCommand? LoadUnencryptedCommand { get; private set; }
 
 
-    public static RelayCommand ExpandTreeCommand { get; private set; }
-    public static RelayCommand CollapseTreeCommand { get; private set; }
-    public static RelayCommand FocusTreeItemCommand { get; private set; }
-    public static RelayCommand SortTreeByNameCommand { get; private set; }
-    public static RelayCommand SortTreeByDateCommand { get; private set; }
-    public static RelayCommand TimeStampCommand { get; private set; }
+    public static RelayCommand? ExpandTreeCommand { get; private set; }
+    public static RelayCommand? CollapseTreeCommand { get; private set; }
+    public static RelayCommand? FocusTreeItemCommand { get; private set; }
+    public static RelayCommand? SortTreeByNameCommand { get; private set; }
+    public static RelayCommand? SortTreeByDateCommand { get; private set; }
+    public static RelayCommand? TimeStampCommand { get; private set; }
 
-    public static RelayCommand FileToBase64Command { get; private set; }
-    public static RelayCommand FileFromBase64Command { get; private set; }
+    public static RelayCommand? FileToBase64Command { get; private set; }
+    public static RelayCommand? FileFromBase64Command { get; private set; }
 
-    public static RelayCommand EncryptFileCommand { get; private set; }
-    public static RelayCommand DecryptFileCommand { get; private set; }
-    public static RelayCommand EncryptFileSharedCommand { get; private set; }
-    public static RelayCommand DecryptFileSharedCommand { get; private set; }
-    public static RelayCommand EncryptFileAccountCommand { get; private set; }
-    public static RelayCommand DecryptFileAccountCommand { get; private set; }
+    public static RelayCommand? EncryptFileCommand { get; private set; }
+    public static RelayCommand? DecryptFileCommand { get; private set; }
+    public static RelayCommand? EncryptFileSharedCommand { get; private set; }
+    public static RelayCommand? DecryptFileSharedCommand { get; private set; }
+    public static RelayCommand? EncryptFileAccountCommand { get; private set; }
+    public static RelayCommand? DecryptFileAccountCommand { get; private set; }
 
-    public static RelayCommand GenerateCertificateCommand { get; private set; }
-    public static RelayCommand ImportCertificateCommand { get; private set; }
-    public static RelayCommand ExportCertificateCommand { get; private set; }
-    public static RelayCommand CreateSignatureCommand { get; private set; }
-    public static RelayCommand VerifySignatureCommand { get; private set; }
+    public static RelayCommand? GenerateCertificateCommand { get; private set; }
+    public static RelayCommand? ImportCertificateCommand { get; private set; }
+    public static RelayCommand? ExportCertificateCommand { get; private set; }
+    public static RelayCommand? CreateSignatureCommand { get; private set; }
+    public static RelayCommand? VerifySignatureCommand { get; private set; }
 
-    public static RelayCommand GenerateKeysCommand { get; private set; }
-    public static RelayCommand GetPublicKeyCommand { get; private set; }
-    public static RelayCommand EncryptWithPublicKeyCommand { get; private set; }
-    public static RelayCommand DecryptWithPrivateKeyCommand { get; private set; }
+    public static RelayCommand? GenerateKeysCommand { get; private set; }
+    public static RelayCommand? GetPublicKeyCommand { get; private set; }
+    public static RelayCommand? EncryptWithPublicKeyCommand { get; private set; }
+    public static RelayCommand? DecryptWithPrivateKeyCommand { get; private set; }
 
 
-    public static RelayCommand HashCommand { get; private set; }
-    public static RelayCommand PurgeCommand { get; private set; }
+    public static RelayCommand? HashCommand { get; private set; }
+    public static RelayCommand? PurgeCommand { get; private set; }
 
 
 
@@ -140,25 +140,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Fire()
     {
-        SaveCommand.RaiseCanExecuteChanged();
-        SaveAsCommand.RaiseCanExecuteChanged();
-        LockCommand.RaiseCanExecuteChanged();
-        ChangePasswordCommand.RaiseCanExecuteChanged();
-        SaveUnencryptedCommand.RaiseCanExecuteChanged();
-        EncryptFileCommand.RaiseCanExecuteChanged();
-        DecryptFileCommand.RaiseCanExecuteChanged();
-        GenerateCertificateCommand.RaiseCanExecuteChanged();
-        ImportCertificateCommand.RaiseCanExecuteChanged();
-        ExportCertificateCommand.RaiseCanExecuteChanged();
-        CreateSignatureCommand.RaiseCanExecuteChanged();
-        VerifySignatureCommand.RaiseCanExecuteChanged();
-        GenerateKeysCommand.RaiseCanExecuteChanged();
-        GetPublicKeyCommand.RaiseCanExecuteChanged();
-        EncryptWithPublicKeyCommand.RaiseCanExecuteChanged();
-        DecryptWithPrivateKeyCommand.RaiseCanExecuteChanged();
+        SaveCommand?.RaiseCanExecuteChanged();
+        SaveAsCommand?.RaiseCanExecuteChanged();
+        LockCommand?.RaiseCanExecuteChanged();
+        ChangePasswordCommand?.RaiseCanExecuteChanged();
+        SaveUnencryptedCommand?.RaiseCanExecuteChanged();
+        EncryptFileCommand?.RaiseCanExecuteChanged();
+        DecryptFileCommand?.RaiseCanExecuteChanged();
+        GenerateCertificateCommand?.RaiseCanExecuteChanged();
+        ImportCertificateCommand?.RaiseCanExecuteChanged();
+        ExportCertificateCommand?.RaiseCanExecuteChanged();
+        CreateSignatureCommand?.RaiseCanExecuteChanged();
+        VerifySignatureCommand?.RaiseCanExecuteChanged();
+        GenerateKeysCommand?.RaiseCanExecuteChanged();
+        GetPublicKeyCommand?.RaiseCanExecuteChanged();
+        EncryptWithPublicKeyCommand?.RaiseCanExecuteChanged();
+        DecryptWithPrivateKeyCommand?.RaiseCanExecuteChanged();
     }
 
-    private static DependencyObject GetDependencyObjectFromVisualTree(DependencyObject startObject, Type type)
+    private static DependencyObject? GetDependencyObjectFromVisualTree(DependencyObject startObject, Type type)
     {
         var parent = startObject;
         while (parent != null)
@@ -203,7 +203,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
 
 
-    private NodeModel GetSelctedItem()
+    private NodeModel? GetSelectedItem()
     {
         if (ProjectTree.HasItems && ProjectTree.SelectedValue != null)
             return ProjectTree.SelectedItem as NodeModel;
@@ -236,9 +236,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            //return ApplicationDeployment.CurrentDeployment.CurrentVersion;
-            Version v = Assembly.GetExecutingAssembly().GetName().Version;
-            return $"{v.Major}.{v.Minor}.{v.Build}";
+            Version? v = Assembly.GetExecutingAssembly().GetName().Version;
+            return v is null ? "" : $"{v.Major}.{v.Minor}.{v.Build}";
         }
         catch (Exception)
         {
@@ -269,41 +268,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         return _isEqual;
     }
 
-    // without itemsSource for treeview
-    private void _CopyItem(TreeViewItem _sourceItem, TreeViewItem _targetItem)
-    {
-        //Asking user wether he want to drop the dragged TreeViewItem here or not
-        if (MessageBox.Show("Would you like to drop " + _sourceItem.Header.ToString() + " into " + _targetItem.Header.ToString() + "", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-        {
-            try
-            {
-                //adding dragged TreeViewItem in target TreeViewItem
-                addChild(_sourceItem, _targetItem);
-
-                //finding Parent TreeViewItem of dragged TreeViewItem 
-                TreeViewItem ParentItem = FindVisualParent<TreeViewItem>(_sourceItem);
-                // if parent is null then remove from TreeView else remove from Parent TreeViewItem
-                if (ParentItem == null)
-                {
-                    ProjectTree.Items.Remove(_sourceItem);
-                }
-                else
-                {
-                    ParentItem.Items.Remove(_sourceItem);
-                }
-            }
-            catch (Exception err)
-            {
-                MessageBox.Show(err.Message, "Error: CopyItem", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-    }
-
+    
     // with itemsSource for treeview
-    private void CopyItem(TreeViewItem _sourceItem, TreeViewItem _targetItem)
+    private void CopyItem(TreeViewItem _sourceItem, TreeViewItem? _targetItem)
     {
         NodeModel source = (NodeModel)_sourceItem.Header;
-        NodeModel target = null;
+        NodeModel? target = null;
         if (_targetItem != null)
             target = (NodeModel)_targetItem.Header;
 
@@ -360,18 +330,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private static TObject FindVisualParent<TObject>(UIElement child) where TObject : UIElement
+    private static TObject? FindVisualParent<TObject>(UIElement? child) where TObject : UIElement
     {
         if (child == null)
         {
             return null;
         }
 
-        UIElement parent = VisualTreeHelper.GetParent(child) as UIElement;
+        UIElement? parent = VisualTreeHelper.GetParent(child) as UIElement;
 
         while (parent != null)
         {
-            TObject found = parent as TObject;
+            TObject? found = parent as TObject;
             if (found != null)
             {
                 return found;
@@ -385,10 +355,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         return null;
     }
 
-    private TreeViewItem GetNearestContainer(UIElement element)
+    private static TreeViewItem? GetNearestContainer(UIElement? element)
     {
         // Walk up the element tree to the nearest tree view item.
-        TreeViewItem container = element as TreeViewItem;
+        TreeViewItem? container = element as TreeViewItem;
         while ((container == null) && (element != null))
         {
             element = VisualTreeHelper.GetParent(element) as UIElement;
@@ -410,8 +380,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void HashFile_Click(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        string selection = mi.Header.ToString().ToUpperInvariant();
+        if (sender is not MenuItem mi)
+            return;
+        string selection = mi.Header.ToString()?.ToUpperInvariant() ?? string.Empty;
         string hashOutputFile = "";
 
         if (FileHelper.GetFileName(out string path, $"Select file to {selection}"))
@@ -433,8 +404,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void HmacFile_Click(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        string selection = mi.Header.ToString().ToUpperInvariant();
+        if (sender is not MenuItem mi)
+            return;
+        string selection = mi.Header.ToString()?.ToUpperInvariant() ?? string.Empty;
         string hmacOutputFile = "";
 
         if (FileHelper.GetFileName(out string path, $"Select file to {selection}"))
@@ -461,8 +433,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void HmacVerifyFile_Click(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        string selection = mi.Header.ToString().ToUpperInvariant();
+        if (sender is not MenuItem mi)
+            return;
+        string selection = mi.Header.ToString()?.ToUpperInvariant() ?? string.Empty;
         bool verified = false;
 
         if (FileHelper.GetFileName(out string path, $"Select file to {selection}"))
@@ -537,14 +510,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void dpDueDate_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
     {
-        DatePicker dp = sender as DatePicker;
-        NodeModel n = ProjectTree.SelectedItem as NodeModel;
+        if (sender is not DatePicker dp)
+            return;
+        NodeModel? n = ProjectTree.SelectedItem as NodeModel;
 
-        if (n.ParentItem != null && n.ParentItem.DueDate.HasValue && n.NodeType != ProjectItemType.Protected)
+        if (n?.ParentItem != null && n.ParentItem.DueDate.HasValue && n.NodeType != ProjectItemType.Protected)
         {
             if (!dp.SelectedDate.HasValue || n.ParentItem.DueDate.Value < dp.SelectedDate)
             {
-                string oldDate = dp.SelectedDate.Value.ToShortDateString();
+                string oldDate = dp.SelectedDate.HasValue
+                    ? dp.SelectedDate.Value.ToShortDateString()
+                    : string.Empty;
                 dp.SelectedDate = n.ParentItem.DueDate;
                 MessageBox.Show($"Cannot set due date of child item ({oldDate}) before due date of parent item ({n.ParentItem.DueDate.Value.ToShortDateString()}). Save to apply changes.", "Invalid date", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -554,34 +530,38 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ProjectTree_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         CheckForChanges();
-        DependencyObject obj = e.OriginalSource as DependencyObject;
-        TreeViewItem item = GetDependencyObjectFromVisualTree(obj, typeof(TreeViewItem)) as TreeViewItem;
-        if (item != null)
+        if (e.OriginalSource is DependencyObject obj &&
+        GetDependencyObjectFromVisualTree(obj, typeof(TreeViewItem)) is TreeViewItem item)
         {
+
             NodeModel model = (NodeModel)item.Header;
 
-            ContextMenu cm = new ContextMenu();
-            if (model.NodeType == ProjectItemType.Project)
-                cm = this.FindResource("cmProjectItem") as ContextMenu;
-            else if (model.NodeType == ProjectItemType.Milestone)
-                cm = this.FindResource("cmMilestoneItem") as ContextMenu;
-            else if (model.NodeType == ProjectItemType.Task || model.NodeType == ProjectItemType.Subtask)
-                cm = this.FindResource("cmTaskItem") as ContextMenu;
-            else if (model.NodeType == ProjectItemType.Protected)
-                cm = this.FindResource("cmProtectedItem") as ContextMenu;
+            string resourceKey = model.NodeType switch
+            {
+                ProjectItemType.Project => "cmProjectItem",
+                ProjectItemType.Milestone => "cmMilestoneItem",
+                ProjectItemType.Task => "cmTaskItem",
+                ProjectItemType.Subtask => "cmTaskItem",
+                ProjectItemType.Protected => "cmProtectedItem",
+                _ => "cmNoItem"
 
-            cm.PlacementTarget = sender as TreeViewItem;
-            cm.DataContext = item;
-            cm.IsOpen = true;
+            };
+
+            if (this.FindResource(resourceKey) is ContextMenu cm)
+            {
+                cm.PlacementTarget = sender as TreeViewItem;
+                cm.DataContext = item;
+                cm.IsOpen = true;
+            }
         }
         else
         {
-            ContextMenu cm = this.FindResource("cmNoItem") as ContextMenu;
-            cm.IsOpen = true;
+            if (this.FindResource("cmNoItem") is ContextMenu cm)
+                cm.IsOpen = true;
         }
-
     }
 
+    
     private void MenuItem_AddProject(object sender, RoutedEventArgs e)
     {
         NodeModel n = new NodeModel(new Project("New Project"));
@@ -599,13 +579,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void MenuItem_AddMilestone(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        if (mi != null)
+        if (sender is MenuItem mi)
         {
-            TreeViewItem t = mi.DataContext as TreeViewItem;
-            NodeModel node = t.Header as NodeModel;
-            if (node != null)
+            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
             {
+            
                 NodeModel n = new NodeModel(new Milestone("New Milestone", node.DueDate), node);
                 node.Nodes.Add(n);
                 n.UpdateParentProgress();
@@ -625,12 +603,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void MenuItem_AddTask(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        if (mi != null)
+        if (sender is MenuItem mi)
         {
-            TreeViewItem t = mi.DataContext as TreeViewItem;
-            NodeModel node = t.Header as NodeModel;
-            if (node != null)
+            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
             {
                 NodeModel n = new NodeModel(new Entities.Task("New Task", node.DueDate), node);
                 node.Nodes.Add(n);
@@ -651,12 +626,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void MenuItem_AddSubtask(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        if (mi != null)
+        if (sender is MenuItem mi)
         {
-            TreeViewItem t = mi.DataContext as TreeViewItem;
-            NodeModel node = t.Header as NodeModel;
-            if (node != null)
+            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
             {
                 NodeModel n = new NodeModel(new Subtask("New Subtask", node.DueDate), node);
                 node.Nodes.Add(n);
@@ -677,15 +649,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void MenuItem_AddProtected(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        if (mi != null)
+        if (sender is MenuItem mi)
         {
-            TreeViewItem t = mi.DataContext as TreeViewItem;
-            if (t != null)
+            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
             {
-                NodeModel node = t.Header as NodeModel;
-                if (node != null)
-                {
                     NodeModel n = new NodeModel(new ProtectedItem("New Protected"), node);
                     node.Nodes.Add(n);
                     n.UpdateParentProgress();
@@ -699,20 +666,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     tNew.Focus();
                     Keyboard.Focus(txtName);
                     txtName.SelectAll();
-                }
+                
             }
         }
     }
 
     private void MenuItem_Delete(object sender, RoutedEventArgs e)
     {
-        MenuItem mi = sender as MenuItem;
-        if (mi != null)
+        if (sender is MenuItem mi)
         {
-            TreeViewItem t = mi.DataContext as TreeViewItem;
-
-            NodeModel node = t.Header as NodeModel;
-            if (node != null)
+            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
             {
                 MessageBoxResult res = MessageBox.Show("Are you sure you want to delete " + node.Text + "?", "Delete project item", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (res == MessageBoxResult.Yes)
@@ -741,10 +704,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (e.Source is TabControl)
         {
-            TabControl tc = sender as TabControl;
-            TabItem tab = tc.SelectedItem as TabItem;
-            if (tab.Header.ToString() == "Todo" && ViewModel.IsFileLoaded)
-                ViewModel.FireTodos();
+            if (sender is TabControl tc && tc.SelectedItem is TabItem tab)
+            {
+                if (tab.Header.ToString() == "Todo" && ViewModel.IsFileLoaded)
+                    ViewModel.FireTodos();
+            }
         }
 
         e.Handled = true;
@@ -754,10 +718,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (e.Source is ListBox)
         {
-            ListBox lb = sender as ListBox;
-            if (lb.SelectedItem != null)
+            if (sender is ListBox lb && lb.SelectedItem is ListItemModel item)
             {
-                ListItemModel item = lb.SelectedItem as ListItemModel;
                 NodeModel node = ViewModel.GetNodeById(item.Id);
 
                 node.ExpandParents();
@@ -774,18 +736,23 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     // to keep track of selected treeViewItem, not just selected NodeModel when using HierarchicalDataTemplate
     private void TreeViewItemSelected(object sender, RoutedEventArgs e)
     {
-        TreeViewItem tvi = e.OriginalSource as TreeViewItem;
-        this.lastSelectedTreeViewItem = tvi;
+        if (e.OriginalSource is TreeViewItem tvi)
+        {
+            this.lastSelectedTreeViewItem = tvi;
+        }
     }
 
     #endregion
 
     #region ProtectedItem event handlers
 
-    private void btCopyPassword_Click(object sender, RoutedEventArgs e) =>
-        ClipBoardHelper.LoadClipBoard(
-            ViewModel.DecryptSecret(GetSelctedItem().Password)
-           , SECONDS_TO_HOLD_PASSWORD);
+    private void btCopyPassword_Click(object sender, RoutedEventArgs e)
+    {
+        NodeModel? item = GetSelectedItem();
+        if (item is null)
+            return;
+        ClipBoardHelper.LoadClipBoard(ViewModel.DecryptSecret(item.Password), SECONDS_TO_HOLD_PASSWORD);
+    }
 
     private void btCopyLogin_Click(object sender, RoutedEventArgs e) => ClipBoardHelper.LoadClipBoard(txtLogin.Text, SECONDS_TO_HOLD_PASSWORD * 10);
     private void btCopyUrl_Click(object sender, RoutedEventArgs e) => ClipBoardHelper.LoadClipBoard(txtUrl.Text, SECONDS_TO_HOLD_PASSWORD * 10);
@@ -796,11 +763,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         txtPass.Visibility = Visibility.Visible;
         txtPass.IsEnabled = true;
         tcTabControl.IsEnabled = false;
-        if (!string.IsNullOrWhiteSpace(GetSelctedItem().Password))
+        NodeModel? item = GetSelectedItem();
+        if (item != null && !string.IsNullOrWhiteSpace(item.Password))
         {
             try
             {
-                txtPass.Text = ViewModel.DecryptSecret(GetSelctedItem().Password);
+                txtPass.Text = ViewModel.DecryptSecret(item.Password);
             }
             catch (Exception)
             {
@@ -817,15 +785,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ViewPasswordButton_Unchecked(object sender, RoutedEventArgs e)
     {
-        GetSelctedItem().Password = ViewModel.EncryptSecret(txtPass.Text);
-        SecurityHelper.ZeroString(txtPass.Text);
-        txtPass.Text = "";
-        txtPass.IsEnabled = false;
-        txtPass.Visibility = Visibility.Collapsed;
-        dummyLabel.Visibility = Visibility.Visible;
-        dockpanelGenerate.IsEnabled = false;
-        tcTabControl.IsEnabled = true;
-        btEditPassword.Content = "Edit";
+        NodeModel? item = GetSelectedItem();
+        if (item != null)
+        {
+            item.Password = ViewModel.EncryptSecret(txtPass.Text);
+        }
+
+        else
+        {
+
+            SecurityHelper.ZeroString(txtPass.Text);
+            txtPass.Text = "";
+            txtPass.IsEnabled = false;
+            txtPass.Visibility = Visibility.Collapsed;
+            dummyLabel.Visibility = Visibility.Visible;
+            dockpanelGenerate.IsEnabled = false;
+            tcTabControl.IsEnabled = true;
+            btEditPassword.Content = "Edit";
+        }
     }
 
     private void GenerateButton_Click(object sender, RoutedEventArgs e)
@@ -856,10 +833,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     {
                         DragDropEffects finalDropEffect = DragDrop.DoDragDrop(ProjectTree, ProjectTree.SelectedValue, DragDropEffects.Move);
                         //Checking target is not null and item is dragging(moving)
-                        if ((finalDropEffect == DragDropEffects.Move)) //  && (_target != null))
+                        if(finalDropEffect == DragDropEffects.Move) //  && (_target != null))
                         {
+                            if (draggedItem is null)
+                                return;
                             // A Move drop was accepted
-                            if (_target == null || !draggedItem.Header.ToString().Equals(_target.Header.ToString()))
+                            if (_target == null || !string.Equals(draggedItem.Header.ToString(), _target.Header.ToString()))
                             {
                                 CopyItem(draggedItem, _target);
                                 _target = null;
@@ -886,7 +865,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                (Math.Abs(currentPosition.Y - _lastMouseDown.Y) > 10.0))
             {
                 // Verify that this is a valid drop and then store the drop target
-                TreeViewItem item = GetNearestContainer(e.OriginalSource as UIElement);
+                TreeViewItem? item = GetNearestContainer(e.OriginalSource as UIElement);
                 if (CheckDropTarget(draggedItem, item)) // no drop on self
                     e.Effects = DragDropEffects.Move;
                 else
@@ -908,7 +887,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             e.Handled = true;
 
             // Verify that this is a valid drop and then store the drop target
-            TreeViewItem TargetItem = GetNearestContainer(e.OriginalSource as UIElement);
+            TreeViewItem? TargetItem = GetNearestContainer(e.OriginalSource as UIElement);
             //if (TargetItem != null && draggedItem != null)
             if (draggedItem != null)
             {
@@ -917,7 +896,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
             else if (draggedItem != null)
             {
-                TreeView TargetItem2 = FindVisualParent<TreeView>(e.OriginalSource as UIElement);
+                TreeView? TargetItem2 = FindVisualParent<TreeView>(e.OriginalSource as UIElement);
                 if (TargetItem2 != null)
                     e.Effects = DragDropEffects.Move;
             }
@@ -1165,10 +1144,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void FocusTree()
     {
-        NodeModel n = GetSelctedItem();
+        NodeModel? n = GetSelectedItem();
         txtFilter.Text = string.Empty;
         ViewModel.FilterNodes(string.Empty);
-        ViewModel.FocusNode(n);
+        if (n != null)
+            ViewModel.FocusNode(n);
     }
 
     private void SortTreeByName()
@@ -1578,7 +1558,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     #region INotify
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
 
     protected void OnPropertyChanged(string propertyName)

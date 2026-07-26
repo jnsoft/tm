@@ -9,7 +9,7 @@ public class MainWindowModel : INotifyPropertyChanged
     public const int PBKDF2_ITERATIONS = 1000000;
     public const int SALT_LEN = 32;
 
-    private byte[] MasterKey = null;
+    private byte[] MasterKey;
     public byte[] Salt = null;
     private byte[] Entropy = null;
 

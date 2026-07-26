@@ -20,14 +20,11 @@ public class TreeViewItemToStringConverter : IValueConverter
 
 public class PriorityToStringConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
-        return value.ToString();
-    }
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => value.ToString() ?? string.Empty;
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
-        return (Priority)Enum.Parse(typeof(Priority), value.ToString(), true);
+        return Enum.Parse<Priority>(value.ToString() ?? string.Empty, true);
     }
 }
 
@@ -36,7 +33,8 @@ public class TabSizeConverter : IMultiValueConverter
     public object Convert(object[] values, Type targetType, object parameter,
         System.Globalization.CultureInfo culture)
     {
-        TabControl tabControl = values[0] as TabControl;
+        if (values[0] is not TabControl tabControl)
+            return 0;
         double width = tabControl.ActualWidth / tabControl.Items.Count;
         //Subtract 1, otherwise we could overflow to two rows.
         return (width <= 1) ? 0 : (width - 2);

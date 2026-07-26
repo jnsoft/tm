@@ -9,15 +9,15 @@ public class MainWindowModel : INotifyPropertyChanged
     public const int PBKDF2_ITERATIONS = 1000000;
     public const int SALT_LEN = 32;
 
-    private byte[] MasterKey;
-    public byte[] Salt = null;
-    private byte[] Entropy = null;
+    private byte[]? MasterKey = null;
+    public byte[]? Salt = null;
+    private byte[]? Entropy = null;
 
-    public string PublicKey = null;
-    private byte[] PrivateKey = null;
-    private byte[] PrivateKeyEntropy = null;
+    public string? PublicKey = null;
+    private byte[]? PrivateKey = null;
+    private byte[]? PrivateKeyEntropy = null;
 
-    public X509Certificate2 CA_Certificate = null;
+    public X509Certificate2? CA_Certificate = null;
 
     private ObservableCollection<NodeModel> nodes;
 
@@ -41,12 +41,12 @@ public class MainWindowModel : INotifyPropertyChanged
                 listItems.AddRange(node.AllChildNodesFlat.Where(x => x.IsLeaf).Select(x => new ListItemModel(x)));
 
             listItems = listItems.Where(x => x.DueDate.HasValue && x.Progress != 100).ToList();
-            return new ObservableCollection<ListItemModel>(listItems.OrderBy(x => x.DueDate.Value).ThenByDescending(x => x.Priority));
+            return new ObservableCollection<ListItemModel>(listItems.OrderBy(x => x.DueDate.GetValueOrDefault()).ThenByDescending(x => x.Priority));
         }
     }
 
 #if DEBUG
-    private byte[] DEBUG_KEY => ProtectedData.Unprotect(MasterKey, Entropy, DataProtectionScope.CurrentUser);
+    private byte[]? DEBUG_KEY => MasterKey is null ? null : ProtectedData.Unprotect(MasterKey, Entropy, DataProtectionScope.CurrentUser);
 
 #endif
 
@@ -81,23 +81,24 @@ public class MainWindowModel : INotifyPropertyChanged
 
     public MainWindowModel(SecureString Password) : this() => SetMasterKey(Password);
 
-    public MainWindowModel(XmlDocument doc, SecureString Password)
+    public MainWindowModel(XmlDocument doc, SecureString Password): this()
     {
-        byte[] salt = XMLhelper.GetInnerTextFromNode(doc.DocumentElement.ChildNodes, "salt", false).FromBase64();
+        XmlElement root = doc.DocumentElement ?? throw new ArgumentException("XML document has no root element", nameof(doc));
+        byte[] salt = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "salt", false).FromBase64();
         SetMasterKey(Password, salt);
 
-        byte[] pepper = XMLhelper.GetInnerTextFromNode(doc.DocumentElement.ChildNodes, "pepper", false).FromBase64();
-        byte[] innersalt = XMLhelper.GetInnerTextFromNode(doc.DocumentElement.ChildNodes, "innersalt", false).FromBase64();
+        byte[] pepper = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "pepper", false).FromBase64();
+        byte[] innersalt = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "innersalt", false).FromBase64();
         XMLhelper.DecryptSimplified(doc, DeriveKey("projects", innersalt).ToBase64().ToSecureString(), pepper);
 
-        List<XmlNode> projects = doc.ChildNodes.FindAllNodesByName("project", true, true);
+        List<XmlNode> projects = root.ChildNodes.FindAllNodesByName("project", true, true);
         setNodesFromProjects(Project.FromXml(projects));
 
-        XmlNode key_store = XMLhelper.FindNodeByName(doc.DocumentElement.ChildNodes, "key_store", false);
+        XmlNode key_store = XMLhelper.FindNodeByName(root.ChildNodes, "key_store", false);
         if (key_store != null)
             LoadKeyStore(key_store);
 
-        XmlNode cert_store = XMLhelper.FindNodeByName(doc.DocumentElement.ChildNodes, "cert_store", false);
+        XmlNode cert_store = XMLhelper.FindNodeByName(root.ChildNodes, "cert_store", false);
         if (cert_store != null)
             LoadCertStore(cert_store);
 
@@ -125,7 +126,7 @@ public class MainWindowModel : INotifyPropertyChanged
 
     #region Working with nodes
 
-    public NodeModel GetNodeById(string id)
+    public NodeModel? GetNodeById(string id)
     {
         foreach (NodeModel node in Nodes) // for each project
         {
@@ -240,12 +241,16 @@ public class MainWindowModel : INotifyPropertyChanged
         Password.Dispose();
     }
 
-    public void SetMasterKey(byte[] salt, byte[] key)
+    public void SetMasterKey(byte[] salt, byte[]? key)
     {
         Entropy = SecurityHelper.GetRandomKey(SALT_LEN);
         Salt = salt;
-        MasterKey = ProtectedData.Protect(key, Entropy, DataProtectionScope.CurrentUser);
-        ClearArr(ref key);
+        if (key != null)
+        {
+            MasterKey = ProtectedData.Protect(key, Entropy, DataProtectionScope.CurrentUser);
+            ClearArr(ref key);
+        }
+        else { throw new ArgumentNullException(nameof(key), "Master key cannot be null"); }
     }
 
     public void ClearMasterKey()
@@ -260,8 +265,8 @@ public class MainWindowModel : INotifyPropertyChanged
     public bool ChangeMasterPassword(SecureString OldPassword, SecureString NewPassword)
     {
         byte[] newSalt = SecurityHelper.GetRandomKey(SALT_LEN);
-        byte[] newKey = SecurityHelper.GetKeyFromPassword(NewPassword, newSalt, 32, PBKDF2_ITERATIONS);
-        byte[] oldKey = SecurityHelper.GetKeyFromPassword(OldPassword, Salt, 32, PBKDF2_ITERATIONS);
+        byte[]? newKey = SecurityHelper.GetKeyFromPassword(NewPassword, newSalt, 32, PBKDF2_ITERATIONS);
+        byte[]? oldKey = SecurityHelper.GetKeyFromPassword(OldPassword, Salt, 32, PBKDF2_ITERATIONS);
 
         try
         {
@@ -292,13 +297,17 @@ public class MainWindowModel : INotifyPropertyChanged
             OldPassword.Dispose();
             NewPassword.Dispose();
             ClearArr(ref oldKey);
+            ClearArr(ref newKey);
         }
 
     }
 
     public byte[] DeriveKey(string context, byte[] salt, int length = 32)
     {
-        byte[] key = ProtectedData.Unprotect(MasterKey, Entropy, DataProtectionScope.CurrentUser);
+        byte[]? key = ProtectedData.Unprotect(
+        MasterKey ?? throw new InvalidOperationException("Master key is not set"),
+        Entropy,
+        DataProtectionScope.CurrentUser);
         byte[] derived_key = SecurityHelper.DeriveSessionKey_HKDF(key, context.ToByte(), length, salt);
         ClearArr(ref key);
         return derived_key;
@@ -319,7 +328,7 @@ public class MainWindowModel : INotifyPropertyChanged
     public string EncryptSecret(string plain)
     {
         byte[] salt = SecurityHelper.GetRandomKey(SALT_LEN);
-        byte[] key = DeriveKey("protected item", salt);
+        byte[]? key = DeriveKey("protected item", salt);
         byte[] encrypted = SecurityHelper.GCMEncrypt(plain.ToByte(), key);
         ClearArr(ref key);
         byte[] result = new byte[salt.Length + encrypted.Length];
@@ -338,7 +347,7 @@ public class MainWindowModel : INotifyPropertyChanged
         int enc_len = input.Length - salt.Length;
         byte[] ciphertext = ArrayHelper.Extract(input, enc_len, ref pos);
 
-        byte[] key = DeriveKey("protected item", salt);
+        byte[]? key = DeriveKey("protected item", salt);
         string plain = SecurityHelper.GCMDecrypt(ciphertext, key).ToStringFromByte();
 
         ClearArr(ref key);
@@ -354,7 +363,7 @@ public class MainWindowModel : INotifyPropertyChanged
         int enc_len = input.Length - salt.Length;
         byte[] ciphertext = ArrayHelper.Extract(input, enc_len, ref pos);
 
-        byte[] key2 = DeriveKey(key, "protected item", salt);
+        byte[]? key2 = DeriveKey(key, "protected item", salt);
 
         string plain = SecurityHelper.GCMDecrypt(ciphertext, key2).ToStringFromByte();
 
@@ -372,7 +381,7 @@ public class MainWindowModel : INotifyPropertyChanged
         byte[] ciphertext = ArrayHelper.Extract(input, enc_len, ref pos);
 
 
-        byte[] key = DeriveKey("protected item", salt);
+        byte[]? key = DeriveKey("protected item", salt);
 
         string plain = SecurityHelper.GCMDecrypt(ciphertext, key).ToStringFromByte();
 
@@ -388,7 +397,7 @@ public class MainWindowModel : INotifyPropertyChanged
         byte[] salt = ArrayHelper.Extract(input, SALT_LEN, ref pos);
         int enc_len = input.Length - salt.Length;
         byte[] ciphertext = ArrayHelper.Extract(input, enc_len, ref pos);
-        byte[] key = DeriveKey(oldkey, "protected item", salt);
+        byte[]? key = DeriveKey(oldkey, "protected item", salt);
         string plain = SecurityHelper.GCMDecrypt(ciphertext, key).ToStringFromByte();
         ClearArr(ref key);
 
@@ -429,7 +438,7 @@ public class MainWindowModel : INotifyPropertyChanged
 
     public void GenerateNewPKIpair()
     {
-        byte[] key = SecurityHelper.GeneratePKIPair(out byte[] pub);
+        byte[]? key = SecurityHelper.GeneratePKIPair(out byte[] pub);
         SetPrivateKey(ref key);
         PublicKey = pub.ToBase64();
     }
@@ -443,14 +452,14 @@ public class MainWindowModel : INotifyPropertyChanged
         }
     }
 
-    public void SetPrivateKey(ref byte[] key)
+    public void SetPrivateKey(ref byte[]? key)
     {
         PrivateKeyEntropy = SecurityHelper.GetRandomKey(SALT_LEN);
-        PrivateKey = ProtectedData.Protect(key, PrivateKeyEntropy, DataProtectionScope.CurrentUser);
+        PrivateKey = ProtectedData.Protect(key ?? throw new ArgumentNullException(nameof(key)), PrivateKeyEntropy, DataProtectionScope.CurrentUser);
         ClearArr(ref key);
     }
 
-    public byte[] GetUnprotectedPrivateKey() => ProtectedData.Unprotect(PrivateKey, PrivateKeyEntropy, DataProtectionScope.CurrentUser);
+    public byte[]? GetUnprotectedPrivateKey() => PrivateKey != null ? ProtectedData.Unprotect(PrivateKey, PrivateKeyEntropy, DataProtectionScope.CurrentUser) : null;
 
     #endregion
 
@@ -513,7 +522,7 @@ public class MainWindowModel : INotifyPropertyChanged
         key_store.AppendChild(keystore_salt);
 
         XmlElement public_key = doc.CreateElement("public_key");
-        public_key.InnerText = PublicKey;
+        public_key.InnerText = PublicKey ?? throw new InvalidOperationException("Public key is not set");
         key_store.AppendChild(public_key);
 
         XmlElement private_key = doc.CreateElement("private_key");
@@ -532,6 +541,9 @@ public class MainWindowModel : INotifyPropertyChanged
         if (!IsPKIenabled)
             throw new Exception("GetPfxXML: No certificate found");
 
+        X509Certificate2 cert = CA_Certificate ?? throw new InvalidOperationException("No CA certificate is loaded");
+
+
         XmlDocument doc = new XmlDocument();
 
         XmlElement cert_store = doc.CreateElement("cert_store");
@@ -549,9 +561,9 @@ public class MainWindowModel : INotifyPropertyChanged
         certstore_salt.InnerText = certstoreSalt.ToBase64();
         cert_store.AppendChild(certstore_salt);
 
-        byte[] pfx = X509Helper.X509ToPfx(CA_Certificate, CA_Certificate.GetSerialNumberString().ToSecureString());
-        byte[] key = DeriveKey("CDATA", certstoreSalt);
-        byte[] enc = SecurityHelper.GCMEncrypt(pfx, key, cert_id.InnerText.ToByte());
+        byte[]? pfx = X509Helper.X509ToPfx(CA_Certificate, CA_Certificate.GetSerialNumberString().ToSecureString());
+        byte[]? key = DeriveKey("CDATA", certstoreSalt);
+        byte[] enc = SecurityHelper.GCMEncrypt(pfx ?? throw new InvalidOperationException("PFX is not set"), key ?? throw new InvalidOperationException("Key is not set"), cert_id.InnerText.ToByte());
         ClearArr(ref key);
         ClearArr(ref pfx);
 
@@ -589,16 +601,21 @@ public class MainWindowModel : INotifyPropertyChanged
         project_store.AppendChild(pepper);
 
         if (IsDiffieHellmanEnabled)
-            project_store.AppendChild(doc.ImportNode(GetKeyStoreXML().DocumentElement, true));
+            project_store.AppendChild(doc.ImportNode(GetKeyStoreXML().DocumentElement
+                ?? throw new InvalidOperationException("GetKeyStoreXML returned a document with no root element"), true));
+
 
         if (IsPKIenabled)
-            project_store.AppendChild(doc.ImportNode(GetCertStoreXML().DocumentElement, true));
+            project_store.AppendChild(doc.ImportNode(GetCertStoreXML().DocumentElement
+                ?? throw new InvalidOperationException("GetCertStoreXML returned a document with no root element"), true));
+
 
         List<Project> ps = GetProjects();
         XmlElement projects = doc.CreateElement("projects");
         for (int i = 0; i < ps.Count; i++)
         {
-            XmlNode project = doc.ImportNode(ps[i].ToXml().DocumentElement, true);
+            XmlNode project = doc.ImportNode(ps[i].ToXml().DocumentElement
+                ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for project at index {i}"), true);
             projects.AppendChild(project);
         }
 
@@ -614,7 +631,7 @@ public class MainWindowModel : INotifyPropertyChanged
     public XmlDocument GetUnencryptedXML(SecureString Password)
     {
         List<Project> plainprojects = GetProjects();
-        byte[] key = SecurityHelper.GetKeyFromPassword(Password, Salt, SALT_LEN, PBKDF2_ITERATIONS); // enforce user to know the password
+        byte[]? key = SecurityHelper.GetKeyFromPassword(Password, Salt, SALT_LEN, PBKDF2_ITERATIONS); // enforce user to know the password
 
         foreach (Project p in plainprojects)
         {
@@ -634,7 +651,8 @@ public class MainWindowModel : INotifyPropertyChanged
         XmlElement projects = doc.CreateElement("projects");
         for (int i = 0; i < plainprojects.Count; i++)
         {
-            XmlNode project = doc.ImportNode(plainprojects[i].ToXml().DocumentElement, true);
+            XmlNode project = doc.ImportNode(plainprojects[i].ToXml().DocumentElement
+                ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for project at index {i}"), true);
             projects.AppendChild(project);
         }
 
@@ -654,8 +672,8 @@ public class MainWindowModel : INotifyPropertyChanged
         PublicKey = XMLhelper.GetInnerTextFromChild(key_store, "public_key");
         byte[] keystore_salt = XMLhelper.GetInnerTextFromChild(key_store, "keystore_salt").FromBase64();
         byte[] encrypted_key = XMLhelper.GetInnerTextFromChild(key_store, "private_key").FromBase64();
-        byte[] key = DeriveKey("key_store", keystore_salt);
-        byte[] private_key = SecurityHelper.GCMDecrypt(encrypted_key, key, "key_store_ad".ToByte());
+        byte[]? key = DeriveKey("key_store", keystore_salt);
+        byte[]? private_key = SecurityHelper.GCMDecrypt(encrypted_key, key ?? throw new InvalidOperationException("Key is not set"), "key_store_ad".ToByte());
         ClearArr(ref key);
         SetPrivateKey(ref private_key);
     }
@@ -666,11 +684,11 @@ public class MainWindowModel : INotifyPropertyChanged
         byte[] certstore_salt = XMLhelper.GetInnerTextFromChild(cert_store, "certstore_salt").FromBase64();
         byte[] enc = XMLhelper.ReadBinaryFromXmlNode(cert_store.GetNode("CDATA", false));
 
-        byte[] key = DeriveKey("CDATA", certstore_salt);
-        byte[] pfx = SecurityHelper.GCMDecrypt(enc, key, cert_id.ToByte());
+        byte[]? key = DeriveKey("CDATA", certstore_salt);
+        byte[]? pfx = SecurityHelper.GCMDecrypt(enc, key ?? throw new InvalidOperationException("Key is not set"), cert_id.ToByte());
         ClearArr(ref key);
 
-        CA_Certificate = X509Helper.X509FromPfx(pfx, XMLhelper.GetInnerTextFromChild(cert_store, "cert_id").ToSecureString());
+        CA_Certificate = X509Helper.X509FromPfx(pfx ?? throw new InvalidOperationException("PFX is not set"), XMLhelper.GetInnerTextFromChild(cert_store, "cert_id").ToSecureString());
     }
 
     public void LoadUnencrypted(XmlDocument unencryptedXml)
@@ -726,9 +744,10 @@ public class MainWindowModel : INotifyPropertyChanged
 
     #region Public Static Helpers
 
-    public static void ClearArr(ref byte[] arr)
+    public static void ClearArr(ref byte[]? arr)
     {
-        Array.Clear(arr, 0, arr.Length);
+        if (arr is not null)
+            Array.Clear(arr, 0, arr.Length);
         arr = null;
     }
 

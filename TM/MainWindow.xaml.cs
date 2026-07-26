@@ -250,7 +250,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     #region Visual tree
 
-    private bool CheckDropTarget(TreeViewItem _sourceItem, TreeViewItem _targetItem)
+    private bool CheckDropTarget(TreeViewItem? _sourceItem, TreeViewItem? _targetItem)
     {
         bool _isEqual = false;
         if (_sourceItem != null && _targetItem != null)
@@ -720,7 +720,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (sender is ListBox lb && lb.SelectedItem is ListItemModel item)
             {
-                NodeModel node = ViewModel.GetNodeById(item.Id);
+                NodeModel? node = ViewModel.GetNodeById(item.Id);
+                if (node == null)
+                    return;
 
                 node.ExpandParents();
                 node.IsSelected = true;
@@ -911,7 +913,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     #region Can Execute?
 
-    private bool CanExecuteSave() => ViewModel.IsFileLoaded && !ViewModel.IsLocked && !btEditPassword.IsChecked.Value;
+    private bool CanExecuteSave() => ViewModel.IsFileLoaded && !ViewModel.IsLocked && btEditPassword.IsChecked != true;
 
     private bool IsFileLoaded() => ViewModel.IsFileLoaded;
 
@@ -940,7 +942,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (WpfDialogHelper.GetPassword("New collection", "Set password:", out SecureString password))
             {
-                ViewModel.Nodes.Clear();
+                ViewModel?.Nodes.Clear();
 
                 XML_File_Path = DefaultPath;
                 if (File.Exists(XML_File_Path))
@@ -949,7 +951,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 ViewModel = new MainWindowModel(password);
                 ViewModel.IsFileLoaded = true;
                 DataContext = ViewModel;
-                OnPropertyChanged("WindowTitle");
+                OnPropertyChanged(nameof(WindowTitle));
                 Fire();
             }
         }
@@ -957,7 +959,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Open()
     {
-        string tPath = null;
+        string? tPath = null;
         if (FileHelper.GetFileName(out tPath, "Open project file", "Xml Files", "xml"))
         {
             try
@@ -978,7 +980,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         dpPass.IsEnabled = true;
 
                         XML_File_Path = tPath;
-                        OnPropertyChanged("WindowTitle");
+                        OnPropertyChanged(nameof(WindowTitle));
 
                         Fire();
 
@@ -1021,12 +1023,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void SaveAs()
     {
-        string fPath = null;
+        string? fPath = null;
         if (FileHelper.SetFileName(out fPath, "Save project file", "Xml Files", "xml"))
         {
             XML_File_Path = fPath;
             Save();
-            OnPropertyChanged("WindowTitle");
+            OnPropertyChanged(nameof(WindowTitle));
         }
     }
 
@@ -1213,7 +1215,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (FileHelper.GetFileName(out string path, "Select file to encrypt"))
         {
-            byte[] key = null;
+            byte[]? key = null;
             try
             {
                 byte[] salt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
@@ -1240,7 +1242,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (FileHelper.GetFileName(out string path, "Select file to decrypt"))
         {
-            byte[] key = null;
+            byte[]? key = null;
             try
             {
                 byte[] salt = FileHelper.ReadSaltFromFile(path);
@@ -1311,7 +1313,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void EncryptFileAccount()
     {
-        string path = null;
+        string? path = null;
         if (FileHelper.GetFileName(out path, "Select file to encrypt"))
         {
             try
@@ -1332,7 +1334,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void DecryptFileAccount()
     {
-        string path = null;
+        string? path = null;
         if (FileHelper.GetFileName(out path, "Select file to decrypt"))
         {
             try
@@ -1464,7 +1466,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         ViewModel.GenerateNewPKIpair();
         Fire();
     }
-    private void GetPublicKey() => ClipBoardHelper.LoadClipBoard(ViewModel.PublicKey, 300);
+    private void GetPublicKey()
+    {
+        if (ViewModel.PublicKey is not null)
+            ClipBoardHelper.LoadClipBoard(ViewModel.PublicKey, 300);
+    }
     private void EncryptWithPublicKey()
     {
         if (FileHelper.GetFileName(out string path, "Select file to encrypt"))
@@ -1477,8 +1483,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     if (File.Exists(newFilename))
                         File.Delete(newFilename);
 
-                    byte[] pk = ViewModel.GetUnprotectedPrivateKey();
-                    byte[] key = SecurityHelper.DeriveSymmetricKey(pk, pubKey.FromBase64());
+                    byte[]? pk = ViewModel.GetUnprotectedPrivateKey();
+                    byte[]? key = SecurityHelper.DeriveSymmetricKey(pk, pubKey.FromBase64());
                     MainWindowModel.ClearArr(ref pk);
 
                     byte[] encrypted = SecurityHelper.GCMEncrypt(File.ReadAllBytes(path), key);
@@ -1516,8 +1522,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     while (File.Exists(newFilename))
                         newFilename += ".new";
 
-                    byte[] pk = ViewModel.GetUnprotectedPrivateKey();
-                    byte[] key = SecurityHelper.DeriveSymmetricKey(pk, pubKey.FromBase64());
+                    byte[]? pk = ViewModel.GetUnprotectedPrivateKey();
+                    byte[]? key = SecurityHelper.DeriveSymmetricKey(pk, pubKey.FromBase64());
                     MainWindowModel.ClearArr(ref pk);
 
                     byte[] decrypted = SecurityHelper.GCMDecrypt(File.ReadAllBytes(path), key);

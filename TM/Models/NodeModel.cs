@@ -1,4 +1,5 @@
-﻿using TM.Common;
+﻿using System.Runtime.CompilerServices;
+using TM.Common;
 using TM.Entities;
 
 namespace TM.Models;
@@ -755,7 +756,10 @@ public class NodeModel : ObservableObject
 
     #region Helpers
 
-    private bool SetTrackedProperty<T>(ref T field, T value)
+    private bool SetTrackedProperty<T>(
+        ref T field,
+        T value,
+        [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
             return false;
@@ -763,7 +767,7 @@ public class NodeModel : ObservableObject
         if (constructed)
             IsChanged = true;
 
-        return SetProperty(ref field, value);
+        return SetProperty(ref field, value, propertyName);
     }
 
     #endregion

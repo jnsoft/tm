@@ -1,8 +1,10 @@
-﻿using TM.Entities;
+﻿using System.Runtime.CompilerServices;
+using TM.Common;
+using TM.Entities;
 
 namespace TM.Models;
 
-public class NodeModel : INotifyPropertyChanged
+public class NodeModel : ObservableObject
 {
     #region props
 
@@ -16,14 +18,7 @@ public class NodeModel : INotifyPropertyChanged
     public string Text
     {
         get => text;
-        set
-        {
-            if (text != value && constructed)
-                IsChanged = true;
-
-            text = value;
-            OnPropertyChanged(nameof(Text));
-        }
+        set => SetTrackedProperty(ref text, value);
     }
 
     private string login = string.Empty;
@@ -32,11 +27,13 @@ public class NodeModel : INotifyPropertyChanged
         get => login;
         set
         {
-            if (login != value && constructed)
+            if (login == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
-            login = value;
-            OnPropertyChanged("Login");
+            SetProperty(ref login, value);
         }
     }
 
@@ -46,11 +43,13 @@ public class NodeModel : INotifyPropertyChanged
         get => password;
         set
         {
-            if (password != value && constructed)
+            if (password == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
-            password = value;
-            OnPropertyChanged("Password");
+            SetProperty(ref password, value);
         }
     }
 
@@ -60,11 +59,13 @@ public class NodeModel : INotifyPropertyChanged
         get => url;
         set
         {
-            if (url != value && constructed)
+            if (url == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
-            url = value;
-            OnPropertyChanged(nameof(Url));
+            SetProperty(ref url, value);
         }
     }
 
@@ -74,11 +75,13 @@ public class NodeModel : INotifyPropertyChanged
         get => description;
         set
         {
-            if (description != value && constructed)
+            if (description == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
-            description = value;
-            OnPropertyChanged(nameof(Description));
+            SetProperty(ref description, value);
         }
     }
 
@@ -88,10 +91,13 @@ public class NodeModel : INotifyPropertyChanged
         get => priority;
         set
         {
-            if (priority != value && constructed)
+            if (priority == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
-            priority = value;
+            SetProperty(ref priority, value);
             Notify();
         }
     }
@@ -102,9 +108,13 @@ public class NodeModel : INotifyPropertyChanged
         get => difficulty;
         set
         {
-            if (difficulty != value && constructed)
+            if (difficulty == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
-            difficulty = value;
+
+            SetProperty(ref difficulty, value);
             UpdateParentProgress();
             Notify();
         }
@@ -120,13 +130,14 @@ public class NodeModel : INotifyPropertyChanged
         set
         {
             DateTime? normalizedValue = NormalizeDueDate(value);
+            if (dueDate == normalizedValue)
+                return;
 
-            if (dueDate != normalizedValue && constructed)
+            if (constructed)
                 IsChanged = true;
 
-            dueDate = normalizedValue;
+            SetProperty(ref dueDate, normalizedValue);
             updateDueDate();
-            OnPropertyChanged(nameof(DueDate));
             Notify();
         }
     }
@@ -149,11 +160,14 @@ public class NodeModel : INotifyPropertyChanged
         get => progress;
         set
         {
-            if (progress != value && constructed)
+            if (progress == value)
+                return;
+
+            if (constructed)
                 IsChanged = true;
 
             int oldProgress = progress;
-            progress = value;
+            SetProperty(ref progress, value);
             Finish(oldProgress, progress);
             UpdateParentProgress();
             Notify();
@@ -164,28 +178,28 @@ public class NodeModel : INotifyPropertyChanged
     public bool IsExpanded
     {
         get => isExpanded;
-        set { isExpanded = value; OnPropertyChanged(nameof(IsExpanded)); }
+        set => SetProperty(ref isExpanded, value);
     }
 
     private bool isSelected;
     public bool IsSelected
     {
         get => isSelected;
-        set { isSelected = value; OnPropertyChanged(nameof(IsSelected)); }
+        set => SetProperty(ref isSelected, value);
     }
 
     private Visibility visibility;
     public Visibility Visibility
     {
         get => visibility;
-        set { visibility = value; OnPropertyChanged("Visibility"); }
+        set => SetProperty(ref visibility, value);
     }
 
     private bool isFound;
     public bool IsFound
     {
         get => isFound;
-        set { isFound = value; OnPropertyChanged("IsFound"); }
+        set => SetProperty(ref isFound, value);
     }
 
     private bool isChanged;
@@ -194,12 +208,11 @@ public class NodeModel : INotifyPropertyChanged
         get => isChanged;
         set
         {
-            isChanged = value;
+            if (!SetProperty(ref isChanged, value))
+                return;
+
             if (value)
-            {
-                OnPropertyChanged(nameof(IsChanged));
                 OnPropertyChanged(nameof(ChangedString));
-            }
         }
     }
 
@@ -220,33 +233,21 @@ public class NodeModel : INotifyPropertyChanged
 
     #region calc props
 
-    private IEnumerable<NodeModel> ChildNodes
+    private IEnumerable<NodeModel> ChildNodes => IsLeaf ? [] : Nodes.Where(node => node.Parent == Id);
+
+    private IEnumerable<NodeModel> EnumerateSelfAndDescendants()
     {
-        get
+        yield return this;
+
+        foreach (NodeModel childNode in Nodes)
         {
-            if (IsLeaf)
-                return new List<NodeModel>();
-            else
-                return this.Nodes.Where(n => n.Parent == Id).ToList();
+            foreach (NodeModel descendant in childNode.EnumerateSelfAndDescendants())
+                yield return descendant;
         }
     }
+    public List<NodeModel> AllChildNodesFlat => [.. EnumerateSelfAndDescendants()];
 
-    public List<NodeModel> AllChildNodesFlat
-    {
-        get
-        {
-            List<NodeModel> ns = [this];
-
-            if (!IsLeaf)
-            {
-                foreach (NodeModel node in this.Nodes)
-                    ns.AddRange(node.AllChildNodesFlat);
-            }
-            return ns;
-        }
-    }
-
-    public bool IsLeaf => Nodes == null || Nodes.Count == 0;
+    public bool IsLeaf => Nodes.Count == 0;
 
     public bool IsProtected => NodeType == ProjectItemType.Protected;
 
@@ -290,50 +291,28 @@ public class NodeModel : INotifyPropertyChanged
         }
     }
 
-    public string ItemPrefix
+    public string ItemPrefix => NodeType switch
     {
-        get
-        {
-            if (NodeType == ProjectItemType.Project)
-                return "P";
-            else if (NodeType == ProjectItemType.Milestone)
-                return "M";
-            else if (NodeType == ProjectItemType.Task)
-                return "T";
-            else if (NodeType == ProjectItemType.Subtask)
-                return "S";
-            else if (NodeType == ProjectItemType.Protected)
-                return "!";
-            else
-                return "";
-        }
-    }
+        ProjectItemType.Project => "P",
+        ProjectItemType.Milestone => "M",
+        ProjectItemType.Task => "T",
+        ProjectItemType.Subtask => "S",
+        ProjectItemType.Protected => "!",
+        _ => string.Empty
+    };
 
-    private int Effort
-    {
-        get
+    private int Effort =>
+    IsProtected || !IsLeaf
+        ? 0
+        : Difficulty switch
         {
-            if (IsProtected)
-                return 0;
-
-            if (IsLeaf)
-            {
-                if (Difficulty == Difficulty.Direct)
-                    return 1;
-                else if (Difficulty == Difficulty.Easy)
-                    return 2;
-                else if (Difficulty == Difficulty.Medium)
-                    return 10;
-                else if (Difficulty == Difficulty.Hard)
-                    return 20;
-                else if (Difficulty == Difficulty.Project)
-                    return 100;
-                else
-                    return 0;
-            }
-            return 0;
-        }
-    }
+            Difficulty.Direct => 1,
+            Difficulty.Easy => 2,
+            Difficulty.Medium => 10,
+            Difficulty.Hard => 20,
+            Difficulty.Project => 100,
+            _ => 0
+        };
 
     public bool IsFinished => Finished.HasValue;
 
@@ -354,256 +333,229 @@ public class NodeModel : INotifyPropertyChanged
 
     public DateTime? MaxDueDate => ParentItem?.DueDate;
 
-    public DateTime DateEnd
-    {
-        get
-        {
-            if (ParentItem != null && ParentItem.DueDate.HasValue)
-                return ParentItem.DueDate.Value;
-            else
-                return DateTime.Now.AddYears(10);
-        }
-    }
+    public DateTime DateEnd => ParentItem?.DueDate ?? DateTime.Now.AddYears(10);
 
     #endregion
 
     #region constructors
 
-    //public NodeModel(string text, params NodeModel[] nodes)
-    //{
-    //    Text = text;
-    //    Nodes = new ObservableCollection<NodeModel>(nodes);
-    //}
+    private void InitializeNodeCore(
+    string id,
+    string? text,
+    string? description,
+    NodeModel? parent,
+    ProjectItemType nodeType,
+    Priority priority,
+    Difficulty difficulty,
+    DateTime created,
+    DateTime? changed,
+    DateTime? nodeDueDate,
+    int progress,
+    bool isExpanded,
+    bool isSelected,
+    string? login = null,
+    string? password = null,
+    string? url = null)
+    {
+        Id = id;
+        Parent = parent?.Id ?? string.Empty;
+        ParentItem = parent;
+        NodeType = nodeType;
+
+        this.text = text ?? string.Empty;
+        this.description = description ?? string.Empty;
+        this.login = login ?? string.Empty;
+        this.password = password ?? string.Empty;
+        this.url = url ?? string.Empty;
+
+        this.priority = priority;
+        this.difficulty = difficulty;
+        Created = created;
+        Changed = changed;
+        dueDate = nodeDueDate;
+        this.progress = progress;
+        this.isExpanded = isExpanded;
+        this.isSelected = isSelected;
+        visibility = Visibility.Visible;
+    }
+
+    private void CompleteConstruction(IEnumerable<NodeModel> childNodes)
+    {
+        Nodes = new ObservableCollection<NodeModel>(childNodes);
+        constructed = true;
+    }
+
 
     public NodeModel() { }
 
     public NodeModel(Project p)
     {
-        Id = p.UUID.ToString();
-        Text = p.Name ?? "";
-        Login = "";
-        Password = "";
-        Url = "";
-        Description = p.Description ?? "";
-        Parent = "";
-        NodeType = ProjectItemType.Project;
-        Priority = p.Priority;
-        Difficulty = Difficulty.Project;
-        Created = p.Created;
-        Changed = p.Changed;
-        dueDate = p.DueDate;
-        Progress = p.Progress;
-        IsExpanded = p.IsExpanded;
-        IsSelected = p.IsSelected;
-        Visibility = Visibility.Visible;
+        InitializeNodeCore(
+            id: p.UUID.ToString(),
+            text: p.Name,
+            description: p.Description,
+            parent: null,
+            nodeType: ProjectItemType.Project,
+            priority: p.Priority,
+            difficulty: Difficulty.Project,
+            created: p.Created,
+            changed: p.Changed,
+            nodeDueDate: p.DueDate,
+            progress: p.Progress,
+            isExpanded: p.IsExpanded,
+            isSelected: p.IsSelected);
 
-        List<NodeModel> ns = new List<NodeModel>();
-
-        foreach (Milestone m in p.Milestones.OrderBy(x => x.Name))
-            ns.Add(new NodeModel(m, this));
-
-        foreach (Entities.Task t in p.Tasks.OrderBy(x => x.Name))
-            ns.Add(new NodeModel(t, this));
-
-        foreach (ProtectedItem item in p.ProtectedItems.OrderBy(x => x.Name))
-            ns.Add(new NodeModel(item, this));
-
-        Nodes = new ObservableCollection<NodeModel>(ns);
-
-        constructed = true;
+        CompleteConstruction(
+            p.Milestones.OrderBy(x => x.Name).Select(m => new NodeModel(m, this))
+                .Concat(p.Tasks.OrderBy(x => x.Name).Select(t => new NodeModel(t, this)))
+                .Concat(p.ProtectedItems.OrderBy(x => x.Name).Select(item => new NodeModel(item, this))));
     }
 
     public NodeModel(Milestone m, NodeModel parent)
     {
-        Id = m.UUID.ToString();
-        Text = m.Name ?? "";
-        Description = m.Description ?? "";
-        Parent = parent.Id;
-        ParentItem = parent;
-        NodeType = ProjectItemType.Milestone;
-        Priority = m.Priority;
-        Difficulty = m.Difficulty;
-        Created = m.Created;
-        Changed = m.Changed;
-        dueDate = m.DueDate;
-        Progress = m.Progress;
-        IsExpanded = m.IsExpanded;
-        IsSelected = m.IsSelected;
-        Visibility = Visibility.Visible;
-        List<NodeModel> ts = new List<NodeModel>();
+        InitializeNodeCore(
+            id: m.UUID.ToString(),
+            text: m.Name,
+            description: m.Description,
+            parent: parent,
+            nodeType: ProjectItemType.Milestone,
+            priority: m.Priority,
+            difficulty: m.Difficulty,
+            created: m.Created,
+            changed: m.Changed,
+            nodeDueDate: m.DueDate,
+            progress: m.Progress,
+            isExpanded: m.IsExpanded,
+            isSelected: m.IsSelected);
 
-        foreach (Entities.Task t in m.Tasks.OrderBy(x => x.Name))
-            ts.Add(new NodeModel(t, this));
-
-        foreach (ProtectedItem item in m.ProtectedItems.OrderBy(x => x.Name))
-            ts.Add(new NodeModel(item, this));
-
-        Nodes = new ObservableCollection<NodeModel>(ts);
-
-        constructed = true;
+        CompleteConstruction(
+            m.Tasks.OrderBy(x => x.Name).Select(t => new NodeModel(t, this))
+                .Concat(m.ProtectedItems.OrderBy(x => x.Name).Select(item => new NodeModel(item, this))));
     }
 
     public NodeModel(Entities.Task t, NodeModel parent)
     {
-        Id = t.UUID.ToString();
-        Text = t.Name ?? "";
-        Description = t.Description ?? "";
-        Parent = parent.Id;
-        ParentItem = parent;
-        NodeType = ProjectItemType.Task;
-        Priority = t.Priority;
-        Difficulty = t.Difficulty;
-        Created = t.Created;
-        Changed = t.Changed;
-        dueDate = t.DueDate;
-        Progress = t.Progress;
-        IsExpanded = t.IsExpanded;
-        IsSelected = t.IsSelected;
-        Visibility = Visibility.Visible;
-        List<NodeModel> ss = new List<NodeModel>();
+        InitializeNodeCore(
+            id: t.UUID.ToString(),
+            text: t.Name,
+            description: t.Description,
+            parent: parent,
+            nodeType: ProjectItemType.Task,
+            priority: t.Priority,
+            difficulty: t.Difficulty,
+            created: t.Created,
+            changed: t.Changed,
+            nodeDueDate: t.DueDate,
+            progress: t.Progress,
+            isExpanded: t.IsExpanded,
+            isSelected: t.IsSelected);
 
-        foreach (Subtask s in t.SubTasks.OrderBy(x => x.Name))
-            ss.Add(new NodeModel(s, this));
-
-        foreach (ProtectedItem item in t.ProtectedItems.OrderBy(x => x.Name))
-            ss.Add(new NodeModel(item, this));
-
-        Nodes = new ObservableCollection<NodeModel>(ss);
-
-        constructed = true;
+        CompleteConstruction(
+            t.SubTasks.OrderBy(x => x.Name).Select(subtask => new NodeModel(subtask, this))
+                .Concat(t.ProtectedItems.OrderBy(x => x.Name).Select(item => new NodeModel(item, this))));
     }
 
     public NodeModel(Subtask s, NodeModel parent)
     {
-        Id = s.UUID.ToString();
-        Text = s.Name ?? "";
-        Description = s.Description ?? "";
-        Parent = parent.Id;
-        ParentItem = parent;
-        NodeType = ProjectItemType.Subtask;
-        Priority = s.Priority;
-        Difficulty = s.Difficulty;
-        Created = s.Created;
-        Changed = s.Changed;
-        dueDate = s.DueDate;
-        Progress = s.Progress;
-        IsExpanded = s.IsExpanded;
-        IsSelected = s.IsSelected;
-        Visibility = Visibility.Visible;
-        List<NodeModel> ss = new List<NodeModel>();
+        InitializeNodeCore(
+            id: s.UUID.ToString(),
+            text: s.Name,
+            description: s.Description,
+            parent: parent,
+            nodeType: ProjectItemType.Subtask,
+            priority: s.Priority,
+            difficulty: s.Difficulty,
+            created: s.Created,
+            changed: s.Changed,
+            nodeDueDate: s.DueDate,
+            progress: s.Progress,
+            isExpanded: s.IsExpanded,
+            isSelected: s.IsSelected);
 
-        foreach (Subtask st in s.SubTasks.OrderBy(x => x.Name))
-            ss.Add(new NodeModel(st, this));
-
-        foreach (ProtectedItem item in s.ProtectedItems.OrderBy(x => x.Name))
-            ss.Add(new NodeModel(item, this));
-
-        Nodes = new ObservableCollection<NodeModel>(ss);
-
-        constructed = true;
+        CompleteConstruction(
+            s.SubTasks.OrderBy(x => x.Name).Select(subtask => new NodeModel(subtask, this))
+                .Concat(s.ProtectedItems.OrderBy(x => x.Name).Select(item => new NodeModel(item, this))));
     }
 
     public NodeModel(ProtectedItem i, NodeModel parent)
     {
-        Id = i.UUID.ToString();
-        Text = i.Name ?? "";
-        Login = i.Login ?? "";
-        Password = i.Password ?? "";
-        Url = i.Url ?? "";
-        Description = i.Description ?? "";
-        Parent = parent.Id;
-        ParentItem = parent;
-        NodeType = ProjectItemType.Protected;
-        Created = i.Created;
-        Changed = i.Changed;
-        IsExpanded = i.IsExpanded;
-        IsSelected = i.IsSelected;
-        Visibility = Visibility.Visible;
-        List<NodeModel> ss = new List<NodeModel>();
+        InitializeNodeCore(
+            id: i.UUID.ToString(),
+            text: i.Name,
+            description: i.Description,
+            parent: parent,
+            nodeType: ProjectItemType.Protected,
+            priority: default,
+            difficulty: default,
+            created: i.Created,
+            changed: i.Changed,
+            nodeDueDate: null,
+            progress: 0,
+            isExpanded: i.IsExpanded,
+            isSelected: i.IsSelected,
+            login: i.Login,
+            password: i.Password,
+            url: i.Url);
 
-        foreach (ProtectedItem p in i.Items.OrderBy(x => x.Name))
-            ss.Add(new NodeModel(p, this));
-
-        Nodes = new ObservableCollection<NodeModel>(ss);
-
-        constructed = true;
+        CompleteConstruction(
+            i.Items.OrderBy(x => x.Name).Select(item => new NodeModel(item, this)));
     }
 
     #endregion
 
     public NodeModel DeepCopy(bool convertTypes = false, NodeModel? parent = null)
     {
-        NodeModel n = new();
+        ProjectItemType nodeType = convertTypes
+        ? parent is null
+            ? ProjectItemType.Project
+            : GetNewTypeFromParentType(parent.NodeType, NodeType)
+        : NodeType;
 
-        if (convertTypes)
-        {
-            if (parent != null)
-                n.NodeType = GetNewTypeFromParentType(parent.NodeType, NodeType);
-            else
-                n.NodeType = ProjectItemType.Project;
-        }
-        else
-            n.NodeType = NodeType;
+        NodeModel clone = new();
+        clone.InitializeNodeCore(
+            id: Id,
+            text: Text,
+            description: Description,
+            parent: parent ?? ParentItem,
+            nodeType: nodeType,
+            priority: Priority,
+            difficulty: Difficulty,
+            created: Created,
+            changed: Changed,
+            nodeDueDate: DueDate,
+            progress: Progress,
+            isExpanded: IsExpanded,
+            isSelected: IsSelected,
+            login: Login,
+            password: Password,
+            url: Url);
 
-        n.Id = Id;
-        n.Text = Text;
-        n.Login = Login;
-        n.Password = Password;
-        n.Url = Url;
-        n.Description = Description;
-        n.Parent = parent == null ? Parent : parent.Id;
-        n.ParentItem = parent == null ? ParentItem : parent;
-        n.Priority = Priority;
-        n.Difficulty = Difficulty;
-        n.Created = Created;
-        n.Changed = Changed;
-        n.dueDate = DueDate;
-        n.Progress = Progress;
-        n.IsExpanded = IsExpanded;
-        n.IsSelected = IsSelected;
-        n.Visibility = Visibility;
-
-        List<NodeModel> ns = new List<NodeModel>();
-
-        foreach (NodeModel node in Nodes)
-            ns.Add(node.DeepCopy(convertTypes, n));
-
-        n.Nodes = new ObservableCollection<NodeModel>(ns);
-        n.constructed = true;
-        return n;
+        clone.CompleteConstruction(Nodes.Select(node => node.DeepCopy(convertTypes, clone)));
+        return clone;
     }
 
-    private static ProjectItemType GetNewTypeFromParentType(ProjectItemType parent, ProjectItemType node)
+    private static ProjectItemType GetNewTypeFromParentType(ProjectItemType parent, ProjectItemType node) =>
+    (parent, node) switch
     {
-        if (node == ProjectItemType.Protected)
-            return ProjectItemType.Protected;
-
-        if (parent == ProjectItemType.Project)
-        {
-            if (node == ProjectItemType.Project || node == ProjectItemType.Milestone)
-                return ProjectItemType.Milestone;
-            else
-                return ProjectItemType.Task;
-        }
-        else if (parent == ProjectItemType.Milestone)
-            return ProjectItemType.Task;
-        else
-            return ProjectItemType.Subtask;
-    }
+        (_, ProjectItemType.Protected) => ProjectItemType.Protected,
+        (ProjectItemType.Project, ProjectItemType.Project) => ProjectItemType.Milestone,
+        (ProjectItemType.Project, ProjectItemType.Milestone) => ProjectItemType.Milestone,
+        (ProjectItemType.Project, _) => ProjectItemType.Task,
+        (ProjectItemType.Milestone, _) => ProjectItemType.Task,
+        _ => ProjectItemType.Subtask
+    };
 
     public void DeleteNode(NodeModel node)
     {
-        foreach (NodeModel n in Nodes)
+        NodeModel? directChild = Nodes.FirstOrDefault(child => child.Id == node.Id);
+        if (directChild is not null)
         {
-            if (n.Id == node.Id)
-            {
-                Nodes.Remove(node);
-                break;
-            }
-
-            else if (!n.IsLeaf)
-                n.DeleteNode(node);
+            Nodes.Remove(directChild);
+            return;
         }
+
+        foreach (NodeModel childNode in Nodes.Where(child => !child.IsLeaf))
+            childNode.DeleteNode(node);
     }
 
     public bool IsChildOf(NodeModel parent)
@@ -687,7 +639,7 @@ public class NodeModel : INotifyPropertyChanged
 
     public void Notify()
     {
-        OnPropertyChanged("DotColor");
+        OnPropertyChanged(nameof(DotColor));
         NotifyParents();
     }
 
@@ -705,9 +657,9 @@ public class NodeModel : INotifyPropertyChanged
         else if (oldProgress != 100 && newProgress == 100)
             this.Finished = DateTime.Now;
 
-        OnPropertyChanged("IsFinished");
-        OnPropertyChanged("Finished");
-        OnPropertyChanged("FinishedString");
+        OnPropertyChanged(nameof(IsFinished));
+        OnPropertyChanged(nameof(Finished));
+        OnPropertyChanged(nameof(FinishedString));
 
     }
 
@@ -751,7 +703,9 @@ public class NodeModel : INotifyPropertyChanged
         }
     }
 
-    private bool IsVisible(string filter) => Text.ToUpper().Contains(filter) || this.Description.ToUpper().Contains(filter);
+    private bool IsVisible(string filter) => 
+        Text.ToUpper().Contains(filter) || 
+        Description.ToUpper().Contains(filter);
 
     // filter must ne uppercase! Reterns true if filter is hit on self or childnodes
     public bool Filter(string filter)
@@ -799,10 +753,22 @@ public class NodeModel : INotifyPropertyChanged
 
     public override string ToString() => NodeType.ToString() + ": " + Text + ", " + Created.ToString() + " | (" + Nodes.Count.ToString() + ")" + " | " + IsChanged.ToString();
 
-    public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected void OnPropertyChanged(string? propertyName)
+    #region Helpers
+
+    private bool SetTrackedProperty<T>(
+        ref T field,
+        T value,
+        [CallerMemberName] string? propertyName = null)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        if (constructed)
+            IsChanged = true;
+
+        return SetProperty(ref field, value, propertyName);
     }
+
+    #endregion
 }

@@ -9,7 +9,7 @@
         xmlns:helpers="clr-namespace:TM.Helpers"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
-        Title="{Binding WindowTitle, RelativeSource={RelativeSource Self}}"  
+        Title="{Binding WindowTitle}"
         Topmost="{Binding IsChecked, BindsDirectlyToSource=True, ElementName=miStayOnTop, Mode=OneWay, NotifyOnSourceUpdated=True}"
         ResizeMode="CanResize"
         Height="345"
@@ -17,12 +17,9 @@
         MinHeight="345"
         MinWidth="455"
         Name="Main"
-        Icon="tasks.ico" 
-        Loaded="Main_Loaded" >
+        Icon="tasks.ico">
 
-    <Window.DataContext>
-        <models:MainWindowModel/>
-    </Window.DataContext>
+
 
     <Window.Resources>
 
@@ -30,35 +27,60 @@
         <sys:Int32 x:Key="CircleWidth">9</sys:Int32>
 
         <ContextMenu x:Key="cmNoItem">
-            <MenuItem Header="Add Project" Click="MenuItem_AddProject"  />
+            <MenuItem Header="Add Project"
+              Command="{Binding DataContext.AddProjectCommand, Source={x:Reference Main}}" />
         </ContextMenu>
 
         <ContextMenu x:Key="cmProjectItem">
-            <MenuItem Header="Add Task" Click="MenuItem_AddTask"  />
-            <MenuItem Header="Add Milestone" Click="MenuItem_AddMilestone" />
-            <MenuItem Header="Add Protected" Click="MenuItem_AddProtected" />
+            <MenuItem Header="Add Task"
+              Command="{Binding DataContext.AddTaskCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
+            <MenuItem Header="Add Milestone"
+              Command="{Binding DataContext.AddMilestoneCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
+            <MenuItem Header="Add Protected"
+              Command="{Binding DataContext.AddProtectedCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
             <Separator />
-            <MenuItem Header="Delete" Click="MenuItem_Delete" />
+            <MenuItem Header="Delete"
+              Command="{Binding DataContext.DeleteNodeCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
         </ContextMenu>
 
         <ContextMenu x:Key="cmMilestoneItem">
-            <MenuItem Header="Add Task" Click="MenuItem_AddTask"  />
-            <MenuItem Header="Add Protected" Click="MenuItem_AddProtected" />
+            <MenuItem Header="Add Task"
+              Command="{Binding DataContext.AddTaskCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
+            <MenuItem Header="Add Protected"
+              Command="{Binding DataContext.AddProtectedCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
             <Separator />
-            <MenuItem Header="Delete" Click="MenuItem_Delete" />
+            <MenuItem Header="Delete"
+              Command="{Binding DataContext.DeleteNodeCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
         </ContextMenu>
 
         <ContextMenu x:Key="cmTaskItem">
-            <MenuItem Header="Add Subtask" Click="MenuItem_AddSubtask"  />
-            <MenuItem Header="Add Protected" Click="MenuItem_AddProtected" />
+            <MenuItem Header="Add Subtask"
+              Command="{Binding DataContext.AddSubtaskCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
+            <MenuItem Header="Add Protected"
+              Command="{Binding DataContext.AddProtectedCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
             <Separator />
-            <MenuItem Header="Delete" Click="MenuItem_Delete" />
+            <MenuItem Header="Delete"
+              Command="{Binding DataContext.DeleteNodeCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
         </ContextMenu>
 
         <ContextMenu x:Key="cmProtectedItem">
-            <MenuItem Header="Add Protected" Click="MenuItem_AddProtected"  />
+            <MenuItem Header="Add Protected"
+              Command="{Binding DataContext.AddProtectedCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
             <Separator />
-            <MenuItem Header="Delete" Click="MenuItem_Delete" />
+            <MenuItem Header="Delete"
+              Command="{Binding DataContext.DeleteNodeCommand, Source={x:Reference Main}}"
+              CommandParameter="{Binding Header}" />
         </ContextMenu>
 
         <!-- the data template for all tree view items -->
@@ -149,15 +171,15 @@
     -->
 
     <Window.InputBindings>
-        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-        <KeyBinding Modifiers="Control" Key="L" Command="{Binding LockCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="Q" Command="{Binding ExitCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-        <KeyBinding Modifiers="Control" Key="E" Command="{Binding ExpandTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="R" Command="{Binding CollapseTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="F" Command="{Binding FocusTreeItemCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="H" Command="{Binding SortTreeByNameCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="D" Command="{Binding SortTreeByDateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-        <KeyBinding Modifiers="Control" Key="T" Command="{Binding TimeStampCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="L" Command="{Binding DataContext.LockCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="Q" Command="{Binding DataContext.ExitCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="E" Command="{Binding DataContext.ExpandTreeCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="R" Command="{Binding DataContext.CollapseTreeCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="F" Command="{Binding DataContext.FocusTreeItemCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="H" Command="{Binding DataContext.SortTreeByNameCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="D" Command="{Binding DataContext.SortTreeByDateCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+        <KeyBinding Modifiers="Control" Key="T" Command="{Binding DataContext.TimeStampCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
     </Window.InputBindings>
 
     <Grid>
@@ -167,25 +189,26 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" FocusManager.IsFocusScope="False" >
+        <Menu Grid.Row="0" FocusManager.IsFocusScope="False">
+
             <MenuItem Header="_File">
-                <MenuItem Header="New" Command="{Binding NewCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Open" Command="{Binding OpenCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-                <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-                <MenuItem Header="SaveAs" Command="{Binding SaveAsCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
+                <MenuItem Header="New" Command="{Binding NewCommand}" />
+                <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+                <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveCommand}" />
+                <MenuItem Header="SaveAs" Command="{Binding SaveAsCommand}" />
                 <Separator />
-                <MenuItem Header="Lock" InputGestureText="Ctrl+L" Command ="{Binding LockCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Lock" InputGestureText="Ctrl+L" Command="{Binding LockCommand}" />
                 <Separator />
-                <MenuItem Header="Change password" Command ="{Binding ChangePasswordCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Change password" Command="{Binding ChangePasswordCommand}" />
                 <Separator />
                 <MenuItem Header="Compability">
-                    <MenuItem Header="Save unecrypted" Command ="{Binding SaveUnencryptedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Load unecrypted" Command ="{Binding LoadUnencryptedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Save unecrypted" Command="{Binding SaveUnencryptedCommand}" />
+                    <MenuItem Header="Load unecrypted" Command="{Binding LoadUnencryptedCommand}" />
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Close" InputGestureText="Ctrl+Q" Command="{Binding ExitCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
+                <MenuItem Header="Close" InputGestureText="Ctrl+Q" Command="{Binding ExitCommand}" />
             </MenuItem>
-            <MenuItem Header="_Edit" IsEnabled="{Binding IsFileLoaded}">
+            <MenuItem Header="_Edit" IsEnabled="{Binding IsFileLoadedState}">
                 <MenuItem Command="Cut" />
                 <MenuItem Command="Copy" />
                 <MenuItem Command="Paste" />
@@ -193,77 +216,77 @@
                 <MenuItem Command="Redo" />
                 <!--<MenuItem Header="Test" Command="models:MainWindowModel.TestCommand"  />-->
             </MenuItem>
-            <MenuItem Header="Common" IsEnabled="{Binding IsFileLoaded}">
-                <MenuItem Header="Expand Tree" InputGestureText="Ctrl+E" Command="{Binding ExpandTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Collapse Tree" InputGestureText="Ctrl+R" Command="{Binding CollapseTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Focus Item" InputGestureText="Ctrl+F" Command="{Binding FocusTreeItemCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Sort Tree (name)" InputGestureText="Ctrl+H" Command="{Binding SortTreeByNameCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Sort Tree (date)" InputGestureText="Ctrl+D" Command="{Binding SortTreeByDateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+            <MenuItem Header="Common" IsEnabled="{Binding IsFileLoadedState}">
+                <MenuItem Header="Expand Tree" InputGestureText="Ctrl+E" Command="{Binding ExpandTreeCommand}"/>
+                <MenuItem Header="Collapse Tree" InputGestureText="Ctrl+R" Command="{Binding CollapseTreeCommand}"/>
+                <MenuItem Header="Focus Item" InputGestureText="Ctrl+F" Command="{Binding FocusTreeItemCommand}"/>
+                <MenuItem Header="Sort Tree (name)" InputGestureText="Ctrl+H" Command="{Binding SortTreeByNameCommand}"/>
+                <MenuItem Header="Sort Tree (date)" InputGestureText="Ctrl+D" Command="{Binding SortTreeByDateCommand}"/>
                 <Separator />
-                <MenuItem Header="Timestamp" InputGestureText="Ctrl+T"  Command="{Binding TimeStampCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Timestamp" InputGestureText="Ctrl+T" Command="{Binding TimeStampCommand}"/>
                 <Separator />
                 <MenuItem Name="miStayOnTop" Header="Stay on top" IsCheckable="True" />
             </MenuItem>
 
-            <MenuItem Header="Util" >
-                <MenuItem Header="Convert file to Base64" Command="{Binding FileToBase64Command, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Convert file from Base64" Command="{Binding FileFromBase64Command, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+            <MenuItem Header="Util">
+                <MenuItem Header="Convert file to Base64" Command="{Binding FileToBase64Command}"/>
+                <MenuItem Header="Convert file from Base64" Command="{Binding FileFromBase64Command}"/>
                 <Separator />
                 <MenuItem Header="GCM AES">
-                    <MenuItem Header="Encrypt File (default password)" Command="{Binding EncryptFileCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Decrypt File (default password)" Command="{Binding DecryptFileCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Encrypt File (default password)" Command="{Binding EncryptFileCommand}"/>
+                    <MenuItem Header="Decrypt File (default password)" Command="{Binding DecryptFileCommand}"/>
                     <Separator />
-                    <MenuItem Header="Encrypt File (set password)" Command="{Binding EncryptFileSharedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Decrypt File (set password)" Command="{Binding DecryptFileSharedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Encrypt File (set password)" Command="{Binding EncryptFileSharedCommand}"/>
+                    <MenuItem Header="Decrypt File (set password)" Command="{Binding DecryptFileSharedCommand}"/>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Encrypt File (account)" Command="{Binding EncryptFileAccountCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Decrypt File (account)" Command="{Binding DecryptFileAccountCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Encrypt File (account)" Command="{Binding EncryptFileAccountCommand}"/>
+                <MenuItem Header="Decrypt File (account)" Command="{Binding DecryptFileAccountCommand}"/>
                 <Separator />
                 <MenuItem Header="CMS (PKCS#7)">
-                    <MenuItem Header="Generate new signing X509" Command="{Binding GenerateCertificateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Import signing X509 (pfx)" Command="{Binding ImportCertificateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Export signing X509 (public .cer)" Command="{Binding ExportCertificateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Sign file with signing X509" Command="{Binding CreateSignatureCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Verify signature file" Command="{Binding VerifySignatureCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Generate new signing X509" Command="{Binding GenerateCertificateCommand}"/>
+                    <MenuItem Header="Import signing X509 (pfx)" Command="{Binding ImportCertificateCommand}"/>
+                    <MenuItem Header="Export signing X509 (public .cer)" Command="{Binding ExportCertificateCommand}"/>
+                    <MenuItem Header="Sign file with signing X509" Command="{Binding CreateSignatureCommand}"/>
+                    <MenuItem Header="Verify signature file" Command="{Binding VerifySignatureCommand}"/>
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="ECDH">
-                    <MenuItem Header="Generate new keypair" Command="{Binding GenerateKeysCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Copy public key to clipboard" Command="{Binding GetPublicKeyCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Encrypt file with public key" Command="{Binding EncryptWithPublicKeyCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Decrypt file with private key" Command="{Binding DecryptWithPrivateKeyCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Generate new keypair" Command="{Binding GenerateKeysCommand}"/>
+                    <MenuItem Header="Copy public key to clipboard" Command="{Binding GetPublicKeyCommand}"/>
+                    <MenuItem Header="Encrypt file with public key" Command="{Binding EncryptWithPublicKeyCommand}"/>
+                    <MenuItem Header="Decrypt file with private key" Command="{Binding DecryptWithPrivateKeyCommand}"/>
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="Compute Hash">
-                    <MenuItem Header="MD5 Hash" Click="HashFile_Click" />
-                    <MenuItem Header="SHA1 Hash" Click="HashFile_Click" />
-                    <MenuItem Header="SHA256 Hash" Click="HashFile_Click" />
-                    <MenuItem Header="SHA384 Hash" Click="HashFile_Click" />
-                    <MenuItem Header="SHA512 Hash" Click="HashFile_Click" />
+                    <MenuItem Header="MD5 Hash" Command="{Binding HashCommand}" CommandParameter="MD5" />
+                    <MenuItem Header="SHA1 Hash" Command="{Binding HashCommand}" CommandParameter="SHA1" />
+                    <MenuItem Header="SHA256 Hash" Command="{Binding HashCommand}" CommandParameter="SHA256" />
+                    <MenuItem Header="SHA384 Hash" Command="{Binding HashCommand}" CommandParameter="SHA384" />
+                    <MenuItem Header="SHA512 Hash" Command="{Binding HashCommand}" CommandParameter="SHA512" />
                 </MenuItem>
                 <MenuItem Header="HMAC">
                     <MenuItem Header="HMAC Sign">
-                        <MenuItem Header="MD5 HMAC" Click="HmacFile_Click" />
-                        <MenuItem Header="SHA1 HMAC" Click="HmacFile_Click" />
-                        <MenuItem Header="SHA256 HMAC" Click="HmacFile_Click" />
-                        <MenuItem Header="SHA384 HMAC" Click="HmacFile_Click" />
-                        <MenuItem Header="SHA512 HMAC" Click="HmacFile_Click" />
+                        <MenuItem Header="MD5 HMAC" Command="{Binding HmacCommand}" CommandParameter="MD5" />
+                        <MenuItem Header="SHA1 HMAC" Command="{Binding HmacCommand}" CommandParameter="SHA1" />
+                        <MenuItem Header="SHA256 HMAC" Command="{Binding HmacCommand}" CommandParameter="SHA256" />
+                        <MenuItem Header="SHA384 HMAC" Command="{Binding HmacCommand}" CommandParameter="SHA384" />
+                        <MenuItem Header="SHA512 HMAC" Command="{Binding HmacCommand}" CommandParameter="SHA512" />
                     </MenuItem>
                     <MenuItem Header="HMAC Verify">
-                        <MenuItem Header="Verify MD5 HMAC" Click="HmacVerifyFile_Click" />
-                        <MenuItem Header="Verify SHA1 HMAC" Click="HmacVerifyFile_Click" />
-                        <MenuItem Header="Verify SHA256 HMAC" Click="HmacVerifyFile_Click" />
-                        <MenuItem Header="Verify SHA384 HMAC" Click="HmacVerifyFile_Click" />
-                        <MenuItem Header="Verify SHA512 HMAC" Click="HmacVerifyFile_Click" />
+                        <MenuItem Header="Verify MD5 HMAC" Command="{Binding VerifyHmacCommand}" CommandParameter="MD5" />
+                        <MenuItem Header="Verify SHA1 HMAC" Command="{Binding VerifyHmacCommand}" CommandParameter="SHA1" />
+                        <MenuItem Header="Verify SHA256 HMAC" Command="{Binding VerifyHmacCommand}" CommandParameter="SHA256" />
+                        <MenuItem Header="Verify SHA384 HMAC" Command="{Binding VerifyHmacCommand}" CommandParameter="SHA384" />
+                        <MenuItem Header="Verify SHA512 HMAC" Command="{Binding VerifyHmacCommand}" CommandParameter="SHA512" />
                     </MenuItem>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Purge file" Command="{Binding PurgeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Purge file" Command="{Binding PurgeCommand}"/>
             </MenuItem>
         </Menu>
 
-        <Grid Grid.Row="1" SizeChanged="Grid_SizeChanged" IsEnabled="{Binding IsFileLoaded}">
+        <Grid Grid.Row="1" SizeChanged="Grid_SizeChanged" IsEnabled="{Binding IsFileLoadedState}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="180" MinWidth="3" />
                 <ColumnDefinition Width="Auto" />
@@ -275,7 +298,7 @@
                     <DockPanel>
                         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,2,2,2" >
                             <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Search" />
-                            <TextBox x:Name="txtFilter" Height="Auto" Width="Auto" VerticalContentAlignment="Center" TextChanged="txtFilter_TextChanged"  />
+                            <TextBox x:Name="txtFilter" Height="Auto" Width="Auto" VerticalContentAlignment="Center" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"  />
                         </DockPanel >
                         <TreeView x:Name="ProjectTree"
                             Margin="2,2,2,2" 
@@ -338,7 +361,8 @@
             <!-- Visibility="{Binding Path=IsFinished, Converter={StaticResource BoolToVis}}"  Hidden -->
 
             <!-- item view -->
-            <DockPanel Name="dpRightSide" Grid.Column="2" DataContext="{Binding SelectedItem, ElementName=ProjectTree, Mode=OneWay}"  >
+            <DockPanel Name="dpRightSide" Grid.Column="2" 
+                       DataContext="{Binding SelectedNode}" >
                 <DockPanel.Style>
                     <Style TargetType="{x:Type DockPanel}">
                         <Style.Triggers>
@@ -362,35 +386,92 @@
                 <!-- name -->
                 <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" >
                     <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Name" />
-                    <TextBox x:Name="txtName" Height="Auto" Width="Auto" VerticalContentAlignment="Center" Text="{Binding Text}" TabIndex="4" />
+                    <TextBox x:Name="txtName"
+                        Height="Auto"
+                        Width="Auto"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        TabIndex="4" />
                 </DockPanel >
 
                 <!-- protected fields -->
                 <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="2,8,2,0" Visibility="{Binding IsProtectedVisible}" >
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" >
                         <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Url    " />
-                        <Button x:Name="btCopyUrl" DockPanel.Dock="Right" Content="Copy" VerticalAlignment="Center" Margin="2,0,2,0" Padding="5,5,5,5" Click="btCopyUrl_Click"  />
+                        <Button x:Name="btCopyUrl"
+                            DockPanel.Dock="Right"
+                            Content="Copy"
+                            VerticalAlignment="Center"
+                            Margin="2,0,2,0"
+                            Padding="5,5,5,5"
+                            Command="{Binding DataContext.CopyUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
                         <TextBox x:Name="txtUrl" Height="Auto" Width="Auto" VerticalContentAlignment="Center" Text="{Binding Url}" TabIndex="5" />
                     </DockPanel >
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" >
                         <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Login" />
-                        <Button x:Name="btCopyLogin" DockPanel.Dock="Right" Content="Copy" VerticalAlignment="Center" Margin="2,0,2,0" Padding="5,5,5,5" Click="btCopyLogin_Click"  />
+                        <Button x:Name="btCopyLogin"
+                            DockPanel.Dock="Right"
+                            Content="Copy"
+                            VerticalAlignment="Center"
+                            Margin="2,0,2,0"
+                            Padding="5,5,5,5"
+                            Command="{Binding DataContext.CopyLoginCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
                         <TextBox x:Name="txtLogin" Height="Auto" Width="Auto" VerticalContentAlignment="Center" Text="{Binding Login}" TabIndex="6" />
                     </DockPanel >
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" Name="dpPass">
                         <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Pass  " />
-                        <Button x:Name="btCopyPassword" DockPanel.Dock="Right" Content="Copy" VerticalAlignment="Center" Margin="2,0,2,0" Padding="5,5,5,5" Click="btCopyPassword_Click"  />
+                        <Button x:Name="btCopyPassword"
+                            DockPanel.Dock="Right"
+                            Content="Copy"
+                            VerticalAlignment="Center"
+                            Margin="2,0,2,0"
+                            Padding="5,5,5,5"
+                            Command="{Binding DataContext.CopyPasswordCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
                         <ToggleButton x:Name="btEditPassword" DockPanel.Dock="Right" Content="Edit" VerticalAlignment="Center" Margin="2,0,2,0" Padding="5,5,5,5" Checked="ViewPasswordButton_Checked" Unchecked="ViewPasswordButton_Unchecked"  />
                         <Label Name="dummyLabel" Content="password hidden" IsEnabled="False"/>
-                        <TextBox x:Name="txtPass" Height="Auto" Width="Auto" VerticalContentAlignment="Center" Text="" IsEnabled="True"  TabIndex="7" Visibility="Collapsed" />
+                        <TextBox x:Name="txtPass"
+                         Height="Auto"
+                         Width="Auto"
+                         VerticalContentAlignment="Center"
+                         Text="{Binding DataContext.EditablePassword, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="True"
+                         TabIndex="7"
+                         Visibility="Collapsed" />
                     </DockPanel >
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" IsEnabled="False" Name="dockpanelGenerate" >
-                        <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Length" Margin="2,0,2,0" />
-                        <Button DockPanel.Dock="Right" Content="Generate" VerticalAlignment="Center" Margin="2,0,2,0" Padding="5,5,5,5" Click="GenerateButton_Click" />
-                        <CheckBox DockPanel.Dock="Right" Content="Complex" VerticalAlignment="Center" Margin="2,0,2,0" Name="chkComplex" />
-                        <Label DockPanel.Dock="Right" Content="{Binding Value, ElementName=slPassLen}" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" Padding="1" Margin="2,0,2,0" />
-                        <Slider Value="12" Minimum="5"  Maximum="30" LargeChange="10" SmallChange="1" TickPlacement="BottomRight" TickFrequency="1" Name="slPassLen" IsSnapToTickEnabled="True" TabIndex="8" IsTabStop="False" VerticalAlignment="Center" Margin="2,0,2,0" />
-                    </DockPanel >
+                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" IsEnabled="False" Name="dockpanelGenerate">
+                        <Label DockPanel.Dock="Left" VerticalAlignment="Center" Content="Length" Margin="2,0,2,0" />
+                        <Button DockPanel.Dock="Right"
+                            Content="Generate"
+                            VerticalAlignment="Center"
+                            Margin="2,0,2,0"
+                            Padding="5,5,5,5"
+                            Command="{Binding DataContext.GeneratePasswordCommand, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+                                        <CheckBox DockPanel.Dock="Right"
+                              Content="Complex"
+                              VerticalAlignment="Center"
+                              Margin="2,0,2,0"
+                              IsChecked="{Binding DataContext.UseComplexGeneratedPassword, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+                        <Label DockPanel.Dock="Right"
+                           Content="{Binding DataContext.GeneratedPasswordLength, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}"
+                           VerticalAlignment="Center"
+                           VerticalContentAlignment="Center"
+                           HorizontalContentAlignment="Right"
+                           Padding="1"
+                           Margin="2,0,2,0" />
+                        <Slider Value="{Binding DataContext.GeneratedPasswordLength, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Minimum="5"
+                            Maximum="30"
+                            LargeChange="10"
+                            SmallChange="1"
+                            TickPlacement="BottomRight"
+                            TickFrequency="1"
+                            Name="slPassLen"
+                            IsSnapToTickEnabled="True"
+                            TabIndex="8"                                                    
+                            IsTabStop="False"
+                            VerticalAlignment="Center"
+                            Margin="2,0,2,0" />
+                    </DockPanel>
                 </DockPanel>
 
 

@@ -29,7 +29,7 @@ public class UnitTests
     public void TestSubtaskToAndFromXml()
     {
         // Arrange
-        List<Project> Projects = MainWindowModelTests.getSampleProjects();
+        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
         Subtask x = Projects.First().Milestones.First().Tasks.First().SubTasks.First();
 
         // Act
@@ -45,7 +45,7 @@ public class UnitTests
     public void TestTaskToAndFromXml()
     {
         // Arrange
-        List<Project> Projects = MainWindowModelTests.getSampleProjects();
+        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
         Task t = Projects.First().Milestones.First().Tasks.First();
 
         // Act
@@ -64,7 +64,7 @@ public class UnitTests
     public void TestMilestoneToAndFromXml()
     {
         // Arrange
-        List<Project> Projects = MainWindowModelTests.getSampleProjects();
+        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
         Milestone x = Projects.First().Milestones.First();
 
         // Act
@@ -81,7 +81,7 @@ public class UnitTests
     public void TestProjectToAndFromXml()
     {
         // Arrange
-        List<Project> Projects = MainWindowModelTests.getSampleProjects();
+        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
         Project x = Projects.First();
 
         // Act

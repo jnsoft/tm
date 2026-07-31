@@ -1,8 +1,12 @@
-﻿namespace TM.Test;
+﻿using TM.Services;
+
+namespace TM.Test;
 
 [TestClass]
 public class IntegrationTests
 {
+    private static readonly ProjectCryptoService Crypto = new();
+
     [TestMethod]
     public void TestSaveAndOpenXmlFile()
     {
@@ -11,24 +15,25 @@ public class IntegrationTests
         if (File.Exists(fn))
             File.Delete(fn);
 
-        MainWindowModel model = new MainWindowModel(new string("secret").ToSecureString());
-        model.LoadProjects(MainWindowModelTests.getSampleProjects());
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
-        model.GenerateNewPKIpair();
-        model.EnsureCAcert();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, new string("secret").ToSecureString());
+        model.LoadProjects(ProjectDocumentTests.getSampleProjects());
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
+        Crypto.GenerateKeys(model);
+        Crypto.EnsureCaCertificate(model);
 
         // Act
-        XMLhelper.XmlToFile(model.GetAsEncryptedXML().DocumentElement, fn);
-        model.ClearAll();
-        model = null;
+        XMLhelper.XmlToFile(Crypto.GetAsEncryptedXml(model).DocumentElement, fn);
+        Crypto.ClearAll(model);
 
         XmlDocument doc = XMLhelper.XmlFromFile(fn);
-        model = new MainWindowModel(doc, new string("secret").ToSecureString());
+        model = new ProjectDocument();
+        Crypto.LoadEncryptedDocument(model, doc, new string("secret").ToSecureString());
 
         // Assert
         Assert.IsFalse(model.IsEmpty);
         Assert.IsTrue(model.IsDiffieHellmanEnabled);
-        Assert.IsTrue(model.IsPKIenabled);
+        Assert.IsTrue(model.Security.IsPkiEnabled);
     }
 
     [TestMethod]
@@ -39,12 +44,13 @@ public class IntegrationTests
         if (File.Exists(fn))
             File.Delete(fn);
 
-        MainWindowModel model = new MainWindowModel(new string("secret").ToSecureString());
-        model.LoadProjects(MainWindowModelTests.getSampleProjects());
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, new string("secret").ToSecureString());
+        model.LoadProjects(ProjectDocumentTests.getSampleProjects());
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
 
         // Act
-        XmlDocument doc = model.GetUnencryptedXML(new string("secret").ToSecureString());
+        XmlDocument doc = Crypto.GetUnencryptedXml(model, new string("secret").ToSecureString());
         byte[] key = SecurityHelper.GetRandomKey(32);
         string fileContent = SecurityHelper.GCMEncrypt(doc.InnerXml.ToByte(), key).ToBase64();
         File.WriteAllText(fn, fileContent);
@@ -57,9 +63,10 @@ public class IntegrationTests
         string xml = fileContent2.ToStringFromByte();
         doc2.LoadXml(xml);
 
-        MainWindowModel model2 = new MainWindowModel(new string("secret").ToSecureString());
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.InitializeNew(model2, new string("secret").ToSecureString());
         model2.LoadUnencrypted(doc);
-        model2.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model2);
 
 
         // Assert

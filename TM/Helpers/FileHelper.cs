@@ -20,7 +20,7 @@ public static class FileHelper
 
         dlg.InitialDirectory = Directory.GetCurrentDirectory();
 
-        path = null;
+        path = string.Empty;
 
         bool? result = dlg.ShowDialog();
 
@@ -47,7 +47,7 @@ public static class FileHelper
 
         dlg.InitialDirectory = Directory.GetCurrentDirectory();
 
-        path = null;
+        path = string.Empty;
 
         bool? result = dlg.ShowDialog();
 
@@ -136,32 +136,6 @@ public static class FileHelper
 
     public static byte[] ReadSaltFromFile(string path) => SecurityHelper.AesGetSaltToDecryptFile(path, 32);
 
-    private static bool AppendToFile(string path, byte[] data)
-    {
-        FileInfo fi = new FileInfo(path);
-        FileStream fs = fi.Open(FileMode.Append);
-        fs.Write(data, 0, data.Length);
-        fs.SetLength(fi.Length + data.Length);
-        fs.Close();
-        return true;
-    }
 
-    private static byte[] RemoveEndFromFile(string path, int NoOfBytesToDelete)
-    {
-        byte[] data = new byte[NoOfBytesToDelete];
-
-        FileInfo fi = new FileInfo(path);
-        FileStream fs = fi.Open(FileMode.Open);
-
-        fs.Seek(0 - NoOfBytesToDelete, SeekOrigin.End);
-        fs.Read(data, 0, NoOfBytesToDelete);
-
-        long bytesToDelete = NoOfBytesToDelete;
-        fs.SetLength(Math.Max(0, fi.Length - bytesToDelete));
-
-        fs.Close();
-
-        return data;
-    }
 
 }

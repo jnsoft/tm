@@ -9,8 +9,8 @@ namespace TM.Entities
     public abstract class ProjectItem
     {
         public Guid UUID { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
         public Priority Priority { get; set; }
         public DateTime? DueDate { get; set; }
         public int Progress { get; set; }
@@ -18,7 +18,7 @@ namespace TM.Entities
         public DateTime? Changed { get; set; }
         public DateTime? Finished { get; set; }
 
-        public List<ProtectedItem> ProtectedItems { get; set; }
+        public List<ProtectedItem> ProtectedItems { get; set; } = new List<ProtectedItem>();
 
         // gui helpers
         public bool IsExpanded { get; set; }
@@ -89,11 +89,9 @@ namespace TM.Entities
 
         public override string ToString() => Name;
 
-        public override bool Equals(object o)
+        public override bool Equals(object? o)
         {
-            ProjectItem x = o as ProjectItem;
-
-            if (x == null)
+            if (o is not ProjectItem x)
                 return false;
 
             return GetHashCode() == x.GetHashCode();

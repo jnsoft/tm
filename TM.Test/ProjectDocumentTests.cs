@@ -1,24 +1,29 @@
 ﻿using TM.Entities;
 using Task = TM.Entities.Task;
+using TM.Services;
 
 namespace TM.Test;
 
 [TestClass]
-public class MainWindowModelTests
+public class ProjectDocumentTests
 {
+    private static readonly ProjectCryptoService Crypto = new();
+
     [TestMethod]
     public void TestDeriveKey()
     {
         // Arrange
         string password = "secret";
         string password2 = new string("secret"); // all variables reference the same string object because literal strings are added to the string pool, new forces a new instance
-        MainWindowModel model = new MainWindowModel(password.ToSecureString());
-        byte[] masterkey = SecurityHelper.GetKeyFromPassword(password2.ToSecureString(), model.Salt, 32, MainWindowModel.PBKDF2_ITERATIONS);
-        byte[] derivedKeySalt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
+        ProjectDocument model = new();
+        Crypto.InitializeNew(model, password.ToSecureString());
+
+        byte[] masterkey = SecurityHelper.GetKeyFromPassword(password2.ToSecureString(), model.Security.Salt, 32, ProjectCryptoService.Pbkdf2Iterations);
+        byte[] derivedKeySalt = SecurityHelper.GetRandomKey(ProjectCryptoService.SaltLength);
 
         // Act
-        byte[] key1 = model.DeriveKey("test", derivedKeySalt);
-        byte[] key2 = model.DeriveKey(masterkey, "test", derivedKeySalt);
+        byte[] key1 = Crypto.DeriveKey(model, "test", derivedKeySalt);
+        byte[] key2 = Crypto.DeriveKey(masterkey, "test", derivedKeySalt);
 
         // Assert
         CollectionAssert.AreEqual(key1, key2);
@@ -29,12 +34,13 @@ public class MainWindowModelTests
     {
         // Arrange
         SecureString pass = "secret".ToSecureString();
-        MainWindowModel model = new MainWindowModel(pass);
+        ProjectDocument model = new();
+        Crypto.InitializeNew(model, pass);
         string secret = "secret";
 
         // Act
-        string encrypted = model.EncryptSecret(secret);
-        string decrypted = model.DecryptSecret(encrypted);
+        string encrypted = Crypto.EncryptSecret(model, secret);
+        string decrypted = Crypto.DecryptSecret(model, encrypted);
 
         // Assert
         Assert.AreEqual(secret, decrypted);
@@ -52,18 +58,20 @@ public class MainWindowModelTests
 
         SecureString oldPass = secret.ToSecureString();
         SecureString oldPass2 = secret2.ToSecureString();
-        MainWindowModel model = new MainWindowModel(oldPass); // new string to force a new instance
-        byte[] oldKey = SecurityHelper.GetKeyFromPassword(oldPass2, model.Salt, 32, MainWindowModel.PBKDF2_ITERATIONS);
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, oldPass);
+        // new string to force a new instance
+        byte[] oldKey = SecurityHelper.GetKeyFromPassword(oldPass2, model.Security.Salt, 32, ProjectCryptoService.Pbkdf2Iterations);
 
         SecureString newPass = secret3.ToSecureString();
-        byte[] newSalt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
-        byte[] newKey = SecurityHelper.GetKeyFromPassword(newPass, newSalt, 32, MainWindowModel.PBKDF2_ITERATIONS);
+        byte[] newSalt = SecurityHelper.GetRandomKey(ProjectCryptoService.SaltLength);
+        byte[] newKey = SecurityHelper.GetKeyFromPassword(newPass, newSalt, 32, ProjectCryptoService.Pbkdf2Iterations);
 
         // Act
-        string encryptedSecret = model.EncryptSecret(secret4);
-        string reencrypted = model.ReencryptSecret(encryptedSecret, oldKey, newKey);
-        string rereencrypted = model.ReencryptSecret(reencrypted, newKey, oldKey);
-        string decrypted = model.DecryptSecret(rereencrypted);
+        string encryptedSecret = Crypto.EncryptSecret(model, secret4);
+        string reencrypted = Crypto.ReencryptSecret(encryptedSecret, oldKey, newKey);
+        string rereencrypted = Crypto.ReencryptSecret(reencrypted, newKey, oldKey);
+        string decrypted = Crypto.DecryptSecret(model, rereencrypted);
 
         // Assert
         Assert.AreEqual(secret4, decrypted);
@@ -74,7 +82,8 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass1 = "secret";
-        MainWindowModel model = new MainWindowModel(pass1.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass1.ToSecureString());
         List<Project> ps = getSampleProjects();
 
         // Act
@@ -96,21 +105,22 @@ public class MainWindowModelTests
         string pass5 = new string("secret"); // force new instance
         string pass6 = new string("secret2"); // force new instance
 
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         model.LoadProjects(ps);
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
         ps = model.GetProjects();
 
         // Act
-        byte[] orgSalt = model.Salt;
-        model.ChangeMasterPassword(pass2.ToSecureString(), pass4.ToSecureString());
+        byte[] orgSalt = model.Security.Salt ?? [];
+        Crypto.ChangeMasterPassword(model, pass2.ToSecureString(), pass4.ToSecureString());
         List<Project> ps2 = model.GetProjects();
-        byte[] newSalt = model.Salt;
+        byte[] newSalt = model.Security.Salt ?? [];
 
-        model.ChangeMasterPassword(pass6.ToSecureString(), pass5.ToSecureString());
+        Crypto.ChangeMasterPassword(model, pass6.ToSecureString(), pass5.ToSecureString());
         List<Project> ps3 = model.GetProjects();
-        byte[] newnewSalt = model.Salt;
+        byte[] newnewSalt = model.Security.Salt ?? [];
 
 
         // Assert
@@ -141,13 +151,15 @@ public class MainWindowModelTests
         string pass = new string("secret"); // force new instance
         string pass2 = new string("secret"); // force new instance
 
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         model.LoadProjects(getSampleProjects());
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
 
         // Act
-        XmlDocument doc = model.GetAsEncryptedXML();
-        MainWindowModel model2 = new MainWindowModel(doc, pass2.ToSecureString());
+        XmlDocument doc = Crypto.GetAsEncryptedXml(model);
+        ProjectDocument model2 = new();
+        Crypto.LoadEncryptedDocument(model2, doc, pass2.ToSecureString());
 
         List<Project> ps = model.GetProjects();
         List<Project> ps2 = model2.GetProjects();
@@ -166,22 +178,24 @@ public class MainWindowModelTests
         string pass = new string("secret"); // force new instance
         string pass2 = new string("secret"); // force new instance
 
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         model.LoadProjects(getSampleProjects());
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
-        model.GenerateNewPKIpair();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
+        Crypto.GenerateKeys(model);
 
         // Act
-        XmlDocument doc = model.GetAsEncryptedXML();
-        MainWindowModel model2 = new MainWindowModel(doc, pass2.ToSecureString());
+        XmlDocument doc = Crypto.GetAsEncryptedXml(model);
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.LoadEncryptedDocument(model2, doc, pass2.ToSecureString());
 
         List<Project> ps = model.GetProjects();
         List<Project> ps2 = model2.GetProjects();
         int hash1 = ps[0].GetHashCode();
         int hash2 = ps2[0].GetHashCode();
 
-        byte[] key1 = model.GetUnprotectedPrivateKey();
-        byte[] key2 = model2.GetUnprotectedPrivateKey();
+        byte[] key1 = Crypto.GetUnprotectedPrivateKey(model) ?? [];
+        byte[] key2 = Crypto.GetUnprotectedPrivateKey(model2) ?? [];
 
 
         // Assert
@@ -197,17 +211,18 @@ public class MainWindowModelTests
         string pass = new string("secret"); // force new instance
         string pass2 = new string("secret"); // force new instance
         string pass3 = new string("secret2"); // force new instance
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         model.LoadProjects(ps);
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
 
         // Act
-        XmlDocument doc = model.GetUnencryptedXML(pass2.ToSecureString());
+        XmlDocument doc = Crypto.GetUnencryptedXml(model, pass2.ToSecureString());
         bool saveWithWrongPassword = true;
         try
         {
-            XmlDocument doc2 = model.GetUnencryptedXML(pass3.ToSecureString());
+            XmlDocument doc2 = Crypto.GetUnencryptedXml(model, pass3.ToSecureString());
         }
         catch (Exception)
         {
@@ -215,7 +230,7 @@ public class MainWindowModelTests
         }
 
         // Assert
-        Assert.IsTrue(doc.DocumentElement.ToString().Length >= 0);
+        Assert.IsGreaterThanOrEqualTo(0, doc.DocumentElement.ToString().Length);
         Assert.IsFalse(saveWithWrongPassword);
     }
 
@@ -226,16 +241,18 @@ public class MainWindowModelTests
         string pass = new string("secret"); // force new instance
         string pass2 = new string("secret"); // force new instance
         string pass3 = new string("secret2"); // force new instance
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         model.LoadProjects(ps);
-        model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
-        XmlDocument unencrypted = model.GetUnencryptedXML(pass2.ToSecureString());
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
+        XmlDocument unencrypted = Crypto.GetUnencryptedXml(model, pass2.ToSecureString());
 
         // Act
-        MainWindowModel model2 = new MainWindowModel(pass3.ToSecureString());
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.InitializeNew(model2, pass3.ToSecureString());
         model2.LoadUnencrypted(unencrypted);
-        model2.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
+        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model2);
 
 
         // Assert
@@ -250,15 +267,16 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = "secret";
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
 
         // Act
-        model.GenerateNewPKIpair();
-        string pubkey1 = model.PublicKey;
-        byte[] privkey1 = model.GetUnprotectedPrivateKey();
-        model.GenerateNewPKIpair();
-        string pubkey2 = model.PublicKey;
-        byte[] privkey2 = model.GetUnprotectedPrivateKey();
+        Crypto.GenerateKeys(model);
+        string pubkey1 = model.Security.PublicKey;
+        byte[] privkey1 = Crypto.GetUnprotectedPrivateKey(model);
+        Crypto.GenerateKeys(model);
+        string pubkey2 = model.Security.PublicKey;
+        byte[] privkey2 = Crypto.GetUnprotectedPrivateKey(model);
 
         // Assert
         Assert.IsFalse(string.IsNullOrWhiteSpace(pubkey1));
@@ -274,11 +292,12 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = "secret";
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
-        model.GenerateNewPKIpair();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
+        Crypto.GenerateKeys(model);
 
         // Act
-        XmlDocument key_store = model.GetKeyStoreXML();
+        XmlDocument key_store = Crypto.GetKeyStoreXml(model);
         //XmlNode node = XMLhelper.FindNodeByName(key_store.DocumentElement.ChildNodes, "key_store", false);
         string public_key = XMLhelper.GetInnerTextFromChild(key_store, "public_key");
         byte[] salt = XMLhelper.GetInnerTextFromChild(key_store, "keystore_salt").FromBase64();
@@ -287,7 +306,7 @@ public class MainWindowModelTests
         // Assert
         Assert.IsFalse(string.IsNullOrWhiteSpace(public_key));
         Assert.IsNotNull(salt);
-        Assert.IsTrue(salt.Length == MainWindowModel.SALT_LEN);
+        Assert.IsTrue(salt.Length == ProjectCryptoService.SaltLength);
         Assert.IsNotNull(private_key);
         Assert.IsTrue(private_key.Length > 0);
     }
@@ -298,20 +317,21 @@ public class MainWindowModelTests
         // Arrange
         string pass = new string("secret");
         string pass2 = new string("secret");
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
-        model.GenerateNewPKIpair();
-        string pubkey1 = model.PublicKey;
-        byte[] privkey1 = model.GetUnprotectedPrivateKey();
-        byte[] salt = model.Salt;
-        XmlDocument key_store = model.GetKeyStoreXML();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
+        Crypto.GenerateKeys(model);
+        string pubkey1 = model.Security.PublicKey;
+        byte[] privkey1 = Crypto.GetUnprotectedPrivateKey(model);
+        byte[] salt = model.Security.Salt;
+        XmlDocument key_store = Crypto.GetKeyStoreXml(model);
 
-        MainWindowModel model2 = new MainWindowModel();
-        model2.SetMasterKey(pass2.ToSecureString(), salt);
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.SetMasterKey(model2, pass2.ToSecureString(), salt);
 
         // Act
-        model2.LoadKeyStore(key_store.DocumentElement);
-        string pubkey2 = model2.PublicKey;
-        byte[] privkey2 = model2.GetUnprotectedPrivateKey();
+        Crypto.LoadKeyStore(model2, key_store.DocumentElement);
+        string pubkey2 = model2.Security.PublicKey;
+        byte[] privkey2 = Crypto.GetUnprotectedPrivateKey(model2);
 
         // Assert
         Assert.IsFalse(string.IsNullOrWhiteSpace(pubkey1));
@@ -332,14 +352,15 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = new string("secret");
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
 
         // Act
-        model.EnsureCAcert();
+        Crypto.EnsureCaCertificate(model);
 
         // Assert
-        Assert.IsTrue(model.CA_Certificate != null);
-        Assert.IsTrue(model.CA_Certificate.HasPrivateKey);
+        Assert.IsTrue(model.Security.CaCertificate != null);
+        Assert.IsTrue(model.Security.CaCertificate.HasPrivateKey);
     }
 
     [TestMethod]
@@ -347,11 +368,12 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = "secret";
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
-        model.EnsureCAcert();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
+        Crypto.EnsureCaCertificate(model);
 
         // Act
-        XmlDocument cert_store = model.GetCertStoreXML();
+        XmlDocument cert_store = Crypto.GetCertStoreXml(model);
         string id = XMLhelper.GetInnerTextFromChild(cert_store, "cert_id");
         byte[] salt = XMLhelper.GetInnerTextFromChild(cert_store, "certstore_salt").FromBase64();
         byte[] pfx_enc = XMLhelper.GetInnerTextFromChild(cert_store, "CDATA").FromBase64();
@@ -359,7 +381,7 @@ public class MainWindowModelTests
         // Assert
         Assert.IsFalse(string.IsNullOrWhiteSpace(id));
         Assert.IsNotNull(salt);
-        Assert.IsTrue(salt.Length == MainWindowModel.SALT_LEN);
+        Assert.IsTrue(salt.Length == ProjectCryptoService.SaltLength);
         Assert.IsNotNull(pfx_enc);
         Assert.IsTrue(pfx_enc.Length > 0);
     }
@@ -370,21 +392,22 @@ public class MainWindowModelTests
         // Arrange
         string pass = new string("secret");
         string pass2 = new string("secret");
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
-        model.EnsureCAcert();
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
+        Crypto.EnsureCaCertificate(model);
 
-        string id1 = model.CA_Certificate.GetSerialNumberString();
-        bool pKey = model.CA_Certificate.HasPrivateKey;
-        XmlDocument cert_store = model.GetCertStoreXML();
+        string id1 = model.Security.CaCertificate.GetSerialNumberString();
+        bool pKey = model.Security.CaCertificate.HasPrivateKey;
+        XmlDocument cert_store = Crypto.GetCertStoreXml(model);
 
-        MainWindowModel model2 = new MainWindowModel();
-        model2.SetMasterKey(pass2.ToSecureString(), model.Salt);
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.SetMasterKey(model2, pass2.ToSecureString(), model.Security.Salt);
 
         // Act
-        model2.LoadCertStore(cert_store.DocumentElement);
+        Crypto.LoadCertStore(model2, cert_store.DocumentElement);
 
-        string id2 = model2.CA_Certificate.GetSerialNumberString();
-        bool pKey2 = model2.CA_Certificate.HasPrivateKey;
+        string id2 = model2.Security.CaCertificate.GetSerialNumberString();
+        bool pKey2 = model2.Security.CaCertificate.HasPrivateKey;
 
         // Assert
         Assert.IsFalse(string.IsNullOrWhiteSpace(id1));
@@ -405,7 +428,8 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = new string("secret"); // force new instance
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         string id = ps[0].Milestones[0].Tasks[0].UUID.ToString();
         model.LoadProjects(ps);
@@ -424,7 +448,8 @@ public class MainWindowModelTests
     {
         // Arrange
         string pass = new string("secret"); // force new instance
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         string id = ps[0].Milestones[0].Tasks[0].UUID.ToString();
         model.LoadProjects(ps);
@@ -443,7 +468,8 @@ public class MainWindowModelTests
         // Arrange
         string nodeId = "new";
         string pass = new string("secret"); // force new instance
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
         List<Project> ps = getSampleProjects();
         model.LoadProjects(ps);
         NodeModel node = new NodeModel();

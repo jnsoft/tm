@@ -153,7 +153,9 @@ public class Project : ProjectItem, ICloneable
             XmlElement tasks = doc.CreateElement("tasks");
             for (int i = 0; i < Tasks.Count; i++)
             {
-                XmlNode task = doc.ImportNode(Tasks[i].ToXml().DocumentElement, true);
+                var element = Tasks[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for task at index {i}.");
+                XmlNode task = doc.ImportNode(element, true);
                 tasks.AppendChild(task);
             }
             project.AppendChild(tasks);
@@ -164,8 +166,10 @@ public class Project : ProjectItem, ICloneable
             XmlElement milestones = doc.CreateElement("milestones");
             for (int i = 0; i < Milestones.Count; i++)
             {
-                XmlNode task = doc.ImportNode(Milestones[i].ToXml().DocumentElement, true);
-                milestones.AppendChild(task);
+                var element = Milestones[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for milestone at index {i}.");
+                XmlNode milestone = doc.ImportNode(element, true);
+                milestones.AppendChild(milestone);
             }
             project.AppendChild(milestones);
         }
@@ -175,7 +179,9 @@ public class Project : ProjectItem, ICloneable
             XmlElement items = doc.CreateElement("items");
             for (int i = 0; i < ProtectedItems.Count; i++)
             {
-                XmlNode pi = doc.ImportNode(ProtectedItems[i].ToXml().DocumentElement, true);
+                var element = ProtectedItems[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for protected item at index {i}.");
+                XmlNode pi = doc.ImportNode(element, true);
                 items.AppendChild(pi);
             }
             project.AppendChild(items);
@@ -228,14 +234,12 @@ public class Project : ProjectItem, ICloneable
         return that;
     }
 
-    public override bool Equals(object o)
+    public override bool Equals(object? o)
     {
-        Project p = o as Project;
-
-        if (p == null)
+        if (o is not Project p)
             return false;
 
-        return this.GetHashCode() == o.GetHashCode();
+        return this.GetHashCode() == p.GetHashCode();
     }
 
     public override int GetHashCode()

@@ -1,8 +1,11 @@
-﻿namespace TM.Test;
+﻿using TM.Services;
+
+namespace TM.Test;
 
 [TestClass]
 public class FileHelperTests
 {
+    private static readonly ProjectCryptoService Crypto = new();
 
     [TestMethod]
     public void TestFileEncryption()
@@ -16,8 +19,8 @@ public class FileHelperTests
         string filecontent2 = "this is another file";
         string filecontent3 = "this is the third file";
 
-        string pass = new string("secret");
-        string pass2 = new string("secret");
+        string pass = new("secret");
+        string pass2 = new("secret");
 
         byte[] key = SecurityHelper.GetRandomKey(32);
         byte[] salt = SecurityHelper.GetRandomKey(32);
@@ -92,15 +95,17 @@ public class FileHelperTests
 
         File.WriteAllText(fn1, filecontent1);
 
-        string pass = new string("secret");
-        string pass2 = new string("secret");
+        string pass = new("secret");
+        string pass2 = new("secret");
 
-        MainWindowModel model = new MainWindowModel(pass.ToSecureString());
-        MainWindowModel model2 = new MainWindowModel();
-        model2.SetMasterKey(pass2.ToSecureString(), model.Salt);
+        ProjectDocument model = new ProjectDocument();
+        Crypto.InitializeNew(model, pass.ToSecureString());
 
-        byte[] salt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
-        byte[] key = model.DeriveKey("test file encryption", salt);
+        ProjectDocument model2 = new ProjectDocument();
+        Crypto.SetMasterKey(model2, pass2.ToSecureString(), model.Security.Salt ?? []);
+
+        byte[] salt = SecurityHelper.GetRandomKey(ProjectCryptoService.SaltLength);
+        byte[] key = Crypto.DeriveKey(model,"test file encryption", salt);
 
         // Act
         FileHelper.EncryptFile(fn1, ref key, salt);
@@ -110,7 +115,7 @@ public class FileHelperTests
 
 
         byte[] salt2 = FileHelper.ReadSaltFromFile(fn1 + ".aes");
-        byte[] key2 = model2.DeriveKey("test file encryption", salt2);
+        byte[] key2 = Crypto.DeriveKey(model2, "test file encryption", salt2);
 
         FileHelper.DecryptFile(fn1 + ".aes", ref key2);
 

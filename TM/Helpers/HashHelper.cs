@@ -29,13 +29,12 @@ public static class HashHelper
                 }
                 catch (IOException e)
                 {
-                    //Console.WriteLine($"I/O Exception: {e.Message}");
+                    throw new IOException($"I/O Exception: {e.Message}");
                 }
                 catch (UnauthorizedAccessException e)
                 {
-                    //Console.WriteLine($"Access Exception: {e.Message}");
+                    throw new UnauthorizedAccessException($"Access Exception: {e.Message}");
                 }
-                return null;
             }
         }
 

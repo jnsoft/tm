@@ -151,7 +151,9 @@ public class ProtectedItem : ICloneable
             XmlElement items = doc.CreateElement("items");
             for (int i = 0; i < Items.Count; i++)
             {
-                XmlNode child = doc.ImportNode(Items[i].ToXml().DocumentElement, true);
+                var element = Items[i].ToXml().DocumentElement
+                    ?? throw new InvalidOperationException($"ToXml() returned a document with no root element for protected item at index {i}.");
+                XmlNode child = doc.ImportNode(element, true);
                 items.AppendChild(child);
             }
             item.AppendChild(items);
@@ -188,11 +190,9 @@ public class ProtectedItem : ICloneable
 
     #endregion
 
-    public override bool Equals(object o)
+    public override bool Equals(object? o)
     {
-        ProtectedItem x = o as ProtectedItem;
-
-        if (x == null)
+        if (o is not ProtectedItem x)
             return false;
 
         return GetHashCode() == x.GetHashCode();

@@ -1,10 +1,10 @@
-﻿using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
+﻿using System.Security.Cryptography.X509Certificates;
+using TM.Common;
 using TM.Entities;
 
 namespace TM.Models;
 
-public class MainWindowModel : INotifyPropertyChanged
+public class MainWindowModel : ObservableObject
 {
     public const int PBKDF2_ITERATIONS = 1000000;
     public const int SALT_LEN = 32;
@@ -13,36 +13,65 @@ public class MainWindowModel : INotifyPropertyChanged
     public byte[]? Salt = null;
     private byte[]? Entropy = null;
 
-    public string? PublicKey = null;
+    private string? publicKey;
+    public string? PublicKey
+    {
+        get => publicKey;
+        set
+        {
+            if (!SetProperty(ref publicKey, value))
+                return;
+
+            OnPropertyChanged(nameof(IsDiffieHellmanEnabled));
+        }
+    }
     private byte[]? PrivateKey = null;
     private byte[]? PrivateKeyEntropy = null;
 
-    public X509Certificate2? CA_Certificate = null;
+    private X509Certificate2? ca_Certificate = null;
+    public X509Certificate2? CA_Certificate
+    {
+        get => ca_Certificate;
+        set
+        {
+            if (!SetProperty(ref ca_Certificate, value))
+                return;
+
+            OnPropertyChanged(nameof(IsPKIenabled));
+        }
+    }
 
     private ObservableCollection<NodeModel> nodes;
 
     public ObservableCollection<NodeModel> Nodes
     {
-        get { return this.nodes; }
+        get => nodes;
         set
         {
-            this.nodes = value;
-            this.OnPropertyChanged();
+            if (!SetProperty(ref nodes, value))
+                return;
+
+            OnPropertyChanged(nameof(IsEmpty));
+            OnPropertyChanged(nameof(Todos));
         }
     }
 
+    private ObservableCollection<ListItemModel> todos = [];
     public ObservableCollection<ListItemModel> Todos
     {
-        get
-        {
-            List<ListItemModel> listItems = new List<ListItemModel>();
-            NodeModel[] nodes = Nodes.ToArray();
-            foreach (NodeModel node in nodes)
-                listItems.AddRange(node.AllChildNodesFlat.Where(x => x.IsLeaf).Select(x => new ListItemModel(x)));
+        get => todos;
+        private set => SetProperty(ref todos, value);
+    }
 
-            listItems = listItems.Where(x => x.DueDate.HasValue && x.Progress != 100).ToList();
-            return new ObservableCollection<ListItemModel>(listItems.OrderBy(x => x.DueDate.GetValueOrDefault()).ThenByDescending(x => x.Priority));
-        }
+    public void RefreshTodos()
+    {
+        Todos = new ObservableCollection<ListItemModel>(
+            EnumerateAllNodes()
+                .Where(node => node.IsLeaf)
+                .Select(node => new ListItemModel(node))
+                .Where(item => item.DueDate.HasValue && item.Progress != 100)
+                .OrderBy(item => item.DueDate.GetValueOrDefault())
+                .ThenByDescending(item => item.Priority));
     }
 
 #if DEBUG
@@ -57,18 +86,19 @@ public class MainWindowModel : INotifyPropertyChanged
     public bool IsFileLoaded
     {
         get => isFileLoaded;
-        set
-        {
-            isFileLoaded = value;
-            OnPropertyChanged("IsFileLoaded");
-        }
+        set => SetProperty(ref isFileLoaded, value);
     }
 
     public bool IsDiffieHellmanEnabled => PrivateKey != null && !string.IsNullOrWhiteSpace(PublicKey);
 
     public bool IsPKIenabled => CA_Certificate != null;
 
-    public bool IsLocked = true;
+    private bool isLocked = true;
+    public bool IsLocked
+    {
+        get => isLocked;
+        set => SetProperty(ref isLocked, value);
+    }
 
     // TODO move TreeViewModel content here
 
@@ -104,7 +134,7 @@ public class MainWindowModel : INotifyPropertyChanged
 
         IsLocked = false;
         IsFileLoaded = true;
-        //OnPropertyChanged("IsLocked");
+        //OnPropertyChanged(nameof(IsLocked));
     }
 
     public void ClearAll()
@@ -119,97 +149,91 @@ public class MainWindowModel : INotifyPropertyChanged
 
         IsLocked = false;
         IsFileLoaded = true;
-        //OnPropertyChanged("IsFileLoaded");
-        //OnPropertyChanged("IsLocked");
+        //OnPropertyChanged(nameof(IsFileLoaded));
+        //OnPropertyChanged(nameof(IsLocked));
     }
 
 
     #region Working with nodes
 
-    public NodeModel? GetNodeById(string id)
+    private IEnumerable<NodeModel> EnumerateAllNodes() =>
+    Nodes.SelectMany(node => node.AllChildNodesFlat);
+
+    private void NotifyNodeCollectionChanged()
     {
-        foreach (NodeModel node in Nodes) // for each project
-        {
-            foreach (NodeModel n in node.AllChildNodesFlat) // inclusive parent node
-            {
-                if (n.Id == id)
-                    return n;
-            }
-        }
-        return null;
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(Todos));
     }
+
+    public NodeModel? GetNodeById(string id) =>
+     EnumerateAllNodes().FirstOrDefault(node => node.Id == id);
 
     public void DeleteNode(NodeModel node)
     {
-        foreach (NodeModel n in Nodes)
+        if (!nodes.Remove(node))
         {
-            if (n.Id == node.Id)
-            {
-                nodes.Remove(node);
-                break;
-            }
-
-            else if (!n.IsLeaf)
-                n.DeleteNode(node);
+            foreach (NodeModel rootNode in Nodes.Where(nodeItem => !nodeItem.IsLeaf))
+                rootNode.DeleteNode(node);
         }
-        OnPropertyChanged(nameof(Nodes));
+
+        NotifyNodeCollectionChanged();
+        RefreshTodos();
     }
 
     public void AddNode(NodeModel node)
     {
         nodes.Add(node);
-        OnPropertyChanged("Nodes");
+        NotifyNodeCollectionChanged();
+        RefreshTodos();
     }
 
     public void FilterNodes(string filter)
     {
-        if (!string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(filter))
         {
-            filter = filter.ToUpper(); // filter must be uppercase!
-            foreach (NodeModel n in Nodes)
-                n.Filter(filter);
+            foreach (NodeModel node in Nodes)
+                node.Visualize();
+
+            return;
         }
-        else
-        {
-            foreach (NodeModel n in Nodes)
-                n.Visualize();
-        }
+
+        string normalizedFilter = filter.Trim().ToUpperInvariant();
+        foreach (NodeModel node in Nodes)
+            node.Filter(normalizedFilter);
     }
 
     public void SortNodes(bool bydate = false)
     {
-        if (this.Nodes.Count < 1)
+        if (Nodes.Count == 0)
             return;
 
-        foreach (NodeModel n in Nodes)
-            n.SortNodes(bydate);
+        foreach (NodeModel node in Nodes)
+            node.SortNodes(bydate);
 
-        if (bydate)
-            this.Nodes = new ObservableCollection<NodeModel>(this.Nodes.OrderBy(n => n.NodeType).ThenBy(n => n.Created));
-        else
-            this.Nodes = new ObservableCollection<NodeModel>(this.Nodes.OrderBy(n => n.NodeType).ThenBy(n => n.Text));
-
-        OnPropertyChanged("Nodes");
+        Nodes = new ObservableCollection<NodeModel>(
+            bydate
+                ? Nodes.OrderBy(node => node.NodeType).ThenBy(node => node.Created)
+                : Nodes.OrderBy(node => node.NodeType).ThenBy(node => node.Text));
     }
 
-    public void ExpandNodes() => expandNodes(nodes);
+    public void ExpandNodes() => ExpandNodesRecursive(nodes);
 
-    private void expandNodes(ObservableCollection<NodeModel> nodes)
+    private static void ExpandNodesRecursive(IEnumerable<NodeModel> sourceNodes)
     {
-        foreach (NodeModel node in nodes)
+        foreach (NodeModel node in sourceNodes)
         {
             node.IsExpanded = true;
-            expandNodes(node.Nodes);
+            ExpandNodesRecursive(node.Nodes);
         }
     }
 
-    public void CollapseNodes() => collapseNodes(nodes);
+    public void CollapseNodes() => CollapseNodesRecursive(nodes);
 
-    private void collapseNodes(ObservableCollection<NodeModel> nodes)
+    private static void CollapseNodesRecursive(IEnumerable<NodeModel> sourceNodes)
     {
-        foreach (NodeModel node in nodes)
+        foreach (NodeModel node in sourceNodes)
         {
-            collapseNodes(node.Nodes);
+            CollapseNodesRecursive(node.Nodes);
             node.IsExpanded = false;
         }
     }
@@ -217,7 +241,7 @@ public class MainWindowModel : INotifyPropertyChanged
     // expand all parent nodes
     internal void FocusNode(NodeModel n)
     {
-        collapseNodes(Nodes);
+        CollapseNodesRecursive(Nodes);
         n.ExpandParents();
         n.IsSelected = true;
     }
@@ -450,13 +474,38 @@ public class MainWindowModel : INotifyPropertyChanged
             ClearArr(ref PrivateKey);
             PrivateKey = null;
         }
+
+        if (PrivateKeyEntropy != null)
+        {
+            ClearArr(ref PrivateKeyEntropy);
+            PrivateKeyEntropy = null;
+        }
+
+        OnPropertyChanged(nameof(IsDiffieHellmanEnabled));
     }
 
     public void SetPrivateKey(ref byte[]? key)
     {
+        if (PrivateKey != null)
+        {
+            ClearArr(ref PrivateKey);
+            PrivateKey = null;
+        }
+
+        if (PrivateKeyEntropy != null)
+        {
+            ClearArr(ref PrivateKeyEntropy);
+            PrivateKeyEntropy = null;
+        }
+
         PrivateKeyEntropy = SecurityHelper.GetRandomKey(SALT_LEN);
-        PrivateKey = ProtectedData.Protect(key ?? throw new ArgumentNullException(nameof(key)), PrivateKeyEntropy, DataProtectionScope.CurrentUser);
+        PrivateKey = ProtectedData.Protect(
+            key ?? throw new ArgumentNullException(nameof(key)),
+            PrivateKeyEntropy,
+            DataProtectionScope.CurrentUser);
+
         ClearArr(ref key);
+        OnPropertyChanged(nameof(IsDiffieHellmanEnabled));
     }
 
     public byte[]? GetUnprotectedPrivateKey() => PrivateKey != null ? ProtectedData.Unprotect(PrivateKey, PrivateKeyEntropy, DataProtectionScope.CurrentUser) : null;
@@ -702,28 +751,8 @@ public class MainWindowModel : INotifyPropertyChanged
 
     // public void ClearFilterFlag() => OnPropertyChanged("IsFiltered"); // needed?
 
-    public void FireTodos() => OnPropertyChanged("Todos");
+    public void FireTodos() => OnPropertyChanged(nameof(Todos));
 
-    #region INotify
-
-    public event PropertyChangedEventHandler? PropertyChanged = delegate { };
-    public void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        // Raise the PropertyChanged event, passing the name of the property whose value has changed.
-        this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    // Old implementaion:
-
-    //public event PropertyChangedEventHandler PropertyChanged;
-
-    //protected void OnPropertyChanged(string propertyName)
-    //{
-    //    if (PropertyChanged != null)
-    //        PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-    //}
-
-    #endregion
 
     #region Private helpers
 

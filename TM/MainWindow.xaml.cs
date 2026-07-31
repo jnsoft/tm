@@ -24,10 +24,26 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     public bool SaveEnabled => CanExecuteSave();
 
-    public MainWindowModel ViewModel { get; set; }
+    private MainWindowModel? viewModel;
+    public MainWindowModel ViewModel => viewModel ??= new MainWindowModel();
 
-    public string XML_File_Path = DefaultPath;
-    public string WindowTitle => " " + (ViewModel != null && ViewModel.IsFileLoaded ? Path.GetFileName(XML_File_Path) : DEFAULT_TITLE + " " + getRunningVersion());
+    private string xmlFilePath = DefaultPath;
+    public string XmlFilePath
+    {
+        get => xmlFilePath;
+        private set
+        {
+            if (xmlFilePath == value)
+                return;
+
+            xmlFilePath = value;
+            OnPropertyChanged(nameof(XmlFilePath));
+            OnPropertyChanged(nameof(WindowTitle));
+        }
+    }
+
+    public string WindowTitle =>
+    $" {(viewModel is { IsFileLoaded: true } ? Path.GetFileName(XmlFilePath) : DEFAULT_TITLE + " " + getRunningVersion())}";
 
 
     // drag & drop
@@ -92,71 +108,185 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public MainWindow()
     {
         InitializeComponent(); // next executes Main_Loaded event handler if defined
-        ViewModel = new MainWindowModel();
-
-        NewCommand = new RelayCommand(new Action(New));
-        OpenCommand = new RelayCommand(new Action(Open));
-        SaveCommand = new RelayCommand(new Action(Save), CanExecuteSave);
-        SaveAsCommand = new RelayCommand(new Action(SaveAs), CanExecuteSave);
-        LockCommand = new RelayCommand(new Action(Lock), CanExecuteSave);
-        ChangePasswordCommand = new RelayCommand(new Action(ChangePassword), CanExecuteSave);
-        SaveUnencryptedCommand = new RelayCommand(new Action(SaveUnencrypted), CanExecuteSave);
-        LoadUnencryptedCommand = new RelayCommand(new Action(LoadUnencrypted));
-        ExitCommand = new RelayCommand(new Action(Exit));
-
-        ExpandTreeCommand = new RelayCommand(new Action(ExpandTree), IsFileLoaded);
-        CollapseTreeCommand = new RelayCommand(new Action(CollapseTree), IsFileLoaded);
-        FocusTreeItemCommand = new RelayCommand(new Action(FocusTree), IsFileLoaded);
-        SortTreeByNameCommand = new RelayCommand(new Action(SortTreeByName), IsFileLoaded);
-        SortTreeByDateCommand = new RelayCommand(new Action(SortTreeByDate), IsFileLoaded);
-        TimeStampCommand = new RelayCommand(new Action(TimeStamp), IsFileLoaded);
-
-        FileToBase64Command = new RelayCommand(new Action(FileToBase64));
-        FileFromBase64Command = new RelayCommand(new Action(FileFromBase64));
-
-        EncryptFileCommand = new RelayCommand(new Action(EncryptFile), IsFileLoadedAndUnlocked);
-        DecryptFileCommand = new RelayCommand(new Action(DecryptFile), IsFileLoadedAndUnlocked);
-        EncryptFileSharedCommand = new RelayCommand(new Action(EncryptFilePassword));
-        DecryptFileSharedCommand = new RelayCommand(new Action(DecryptFilePassword));
-        EncryptFileAccountCommand = new RelayCommand(new Action(EncryptFileAccount));
-        DecryptFileAccountCommand = new RelayCommand(new Action(DecryptFileAccount));
-
-        GenerateCertificateCommand = new RelayCommand(new Action(GenerateCertificate), IsFileLoaded);
-        ImportCertificateCommand = new RelayCommand(new Action(ImportCertificate), IsFileLoaded);
-        ExportCertificateCommand = new RelayCommand(new Action(ExportCertificate), IsPKIEnabled);
-        CreateSignatureCommand = new RelayCommand(new Action(CreateSignature), IsPKIEnabled);
-        VerifySignatureCommand = new RelayCommand(new Action(VerifySignature), IsPKIEnabled);
-
-        GenerateKeysCommand = new RelayCommand(new Action(GenerateKeys), IsFileLoaded);
-        GetPublicKeyCommand = new RelayCommand(new Action(GetPublicKey), IsDiffieHellmanEnabled);
-        EncryptWithPublicKeyCommand = new RelayCommand(new Action(EncryptWithPublicKey), IsDiffieHellmanEnabled);
-        DecryptWithPrivateKeyCommand = new RelayCommand(new Action(DecryptWithPrivateKey), IsDiffieHellmanEnabled);
-
-        PurgeCommand = new RelayCommand(new Action(PurgeFile));
+        InitializeCommands();
+        SetViewModel(new MainWindowModel());
     }
 
+    
 
     #region Helpers
 
-    private void Fire()
+    private void SetViewModel(MainWindowModel newViewModel)
     {
-        SaveCommand?.RaiseCanExecuteChanged();
-        SaveAsCommand?.RaiseCanExecuteChanged();
-        LockCommand?.RaiseCanExecuteChanged();
-        ChangePasswordCommand?.RaiseCanExecuteChanged();
-        SaveUnencryptedCommand?.RaiseCanExecuteChanged();
-        EncryptFileCommand?.RaiseCanExecuteChanged();
-        DecryptFileCommand?.RaiseCanExecuteChanged();
-        GenerateCertificateCommand?.RaiseCanExecuteChanged();
-        ImportCertificateCommand?.RaiseCanExecuteChanged();
-        ExportCertificateCommand?.RaiseCanExecuteChanged();
-        CreateSignatureCommand?.RaiseCanExecuteChanged();
-        VerifySignatureCommand?.RaiseCanExecuteChanged();
-        GenerateKeysCommand?.RaiseCanExecuteChanged();
-        GetPublicKeyCommand?.RaiseCanExecuteChanged();
-        EncryptWithPublicKeyCommand?.RaiseCanExecuteChanged();
-        DecryptWithPrivateKeyCommand?.RaiseCanExecuteChanged();
+        if (viewModel is not null)
+            viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        viewModel = newViewModel;
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        DataContext = viewModel;
+        OnPropertyChanged(nameof(WindowTitle));
+        RefreshCommandStates();
     }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainWindowModel.IsFileLoaded))
+            OnPropertyChanged(nameof(WindowTitle));
+
+        if (e.PropertyName is nameof(MainWindowModel.IsFileLoaded)
+            or nameof(MainWindowModel.IsLocked)
+            or nameof(MainWindowModel.PublicKey)
+            or nameof(MainWindowModel.CA_Certificate))
+        {
+            RefreshCommandStates();
+        }
+    }
+
+    private static void ShowInfo(string message, string title = "Info") =>
+    MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+
+    private static void ShowWarning(string message, string title = "Warning") =>
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    private static void ShowError(string message, string title = "Error") =>
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+
+    private static void ShowError(Exception ex, string title = "Error") =>
+        ShowError(ex.Message, title);
+
+    private static bool TryGetOpenFilePath(
+    string title,
+    out string path,
+    string fileTypes = "",
+    string fileTypeEndingFilter = "") =>
+    FileHelper.GetFileName(out path, title, fileTypes, fileTypeEndingFilter);
+
+    private static bool TryGetSaveFilePath(
+        string title,
+        out string path,
+        string fileTypes = "",
+        string fileTypeEndingFilter = "") =>
+        FileHelper.SetFileName(out path, title, fileTypes, fileTypeEndingFilter);
+
+    private static bool TryGetPassword(string title, string prompt, out SecureString password) =>
+        WpfDialogHelper.GetPassword(title, prompt, out password);
+
+    private static void ExecuteWithUiErrorHandling(
+        Action action,
+        string cryptographicErrorMessage,
+        string cryptographicTitle = "Encryption error")
+    {
+        try
+        {
+            action();
+        }
+        catch (CryptographicException)
+        {
+            ShowWarning(cryptographicErrorMessage, cryptographicTitle);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
+    }
+
+    private RelayCommand?[] GetStateAwareCommands() =>
+    [
+        SaveCommand,
+        SaveAsCommand,
+        LockCommand,
+        ChangePasswordCommand,
+        SaveUnencryptedCommand,
+        EncryptFileCommand,
+        DecryptFileCommand,
+        GenerateCertificateCommand,
+        ImportCertificateCommand,
+        ExportCertificateCommand,
+        CreateSignatureCommand,
+        VerifySignatureCommand,
+        GenerateKeysCommand,
+        GetPublicKeyCommand,
+        EncryptWithPublicKeyCommand,
+        DecryptWithPrivateKeyCommand
+    ];
+
+    private void RefreshCommandStates() => RaiseCanExecuteChanged(GetStateAwareCommands());
+
+    private static RelayCommand CreateCommand(Action execute, Func<bool>? canExecute = null) =>
+    canExecute is null ? new RelayCommand(execute) : new RelayCommand(execute, canExecute);
+
+    private static void RaiseCanExecuteChanged(params RelayCommand?[] commands)
+    {
+        foreach (RelayCommand? command in commands)
+            command?.RaiseCanExecuteChanged();
+    }
+
+    private static bool TryGetTreeNodeFromMenuItem(object sender, out TreeViewItem treeViewItem, out NodeModel node)
+    {
+        treeViewItem = null!;
+        node = null!;
+
+        if (sender is not MenuItem
+            {
+                DataContext: TreeViewItem
+                {
+                    Header: NodeModel headerNode
+                } item
+            })
+        {
+            return false;
+        }
+
+        treeViewItem = item;
+        node = headerNode;
+        return true;
+    }
+
+    private void InitializeCommands()
+    {
+        NewCommand = CreateCommand(New);
+        OpenCommand = CreateCommand(Open);
+        SaveCommand = CreateCommand(Save, CanExecuteSave);
+        SaveAsCommand = CreateCommand(SaveAs, CanExecuteSave);
+        LockCommand = CreateCommand(Lock, CanExecuteSave);
+        ChangePasswordCommand = CreateCommand(ChangePassword, CanExecuteSave);
+        SaveUnencryptedCommand = CreateCommand(SaveUnencrypted, CanExecuteSave);
+        LoadUnencryptedCommand = CreateCommand(LoadUnencrypted);
+        ExitCommand = CreateCommand(Exit);
+
+        ExpandTreeCommand = CreateCommand(ExpandTree, IsFileLoaded);
+        CollapseTreeCommand = CreateCommand(CollapseTree, IsFileLoaded);
+        FocusTreeItemCommand = CreateCommand(FocusTree, IsFileLoaded);
+        SortTreeByNameCommand = CreateCommand(SortTreeByName, IsFileLoaded);
+        SortTreeByDateCommand = CreateCommand(SortTreeByDate, IsFileLoaded);
+        TimeStampCommand = CreateCommand(TimeStamp, IsFileLoaded);
+
+        FileToBase64Command = CreateCommand(FileToBase64);
+        FileFromBase64Command = CreateCommand(FileFromBase64);
+
+        EncryptFileCommand = CreateCommand(EncryptFile, IsFileLoadedAndUnlocked);
+        DecryptFileCommand = CreateCommand(DecryptFile, IsFileLoadedAndUnlocked);
+        EncryptFileSharedCommand = CreateCommand(EncryptFilePassword);
+        DecryptFileSharedCommand = CreateCommand(DecryptFilePassword);
+        EncryptFileAccountCommand = CreateCommand(EncryptFileAccount);
+        DecryptFileAccountCommand = CreateCommand(DecryptFileAccount);
+
+        GenerateCertificateCommand = CreateCommand(GenerateCertificate, IsFileLoaded);
+        ImportCertificateCommand = CreateCommand(ImportCertificate, IsFileLoaded);
+        ExportCertificateCommand = CreateCommand(ExportCertificate, IsPKIEnabled);
+        CreateSignatureCommand = CreateCommand(CreateSignature, IsPKIEnabled);
+        VerifySignatureCommand = CreateCommand(VerifySignature, IsPKIEnabled);
+
+        GenerateKeysCommand = CreateCommand(GenerateKeys, IsFileLoaded);
+        GetPublicKeyCommand = CreateCommand(GetPublicKey, IsDiffieHellmanEnabled);
+        EncryptWithPublicKeyCommand = CreateCommand(EncryptWithPublicKey, IsDiffieHellmanEnabled);
+        DecryptWithPrivateKeyCommand = CreateCommand(DecryptWithPrivateKey, IsDiffieHellmanEnabled);
+
+        PurgeCommand = CreateCommand(PurgeFile);
+    }
+
+    private void Fire() => RefreshCommandStates();
 
     private static DependencyObject? GetDependencyObjectFromVisualTree(DependencyObject startObject, Type type)
     {
@@ -564,127 +694,72 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     
     private void MenuItem_AddProject(object sender, RoutedEventArgs e)
     {
-        NodeModel n = new NodeModel(new Project("New Project"));
-        ViewModel.AddNode(n);
+        NodeModel node = new NodeModel(new Project("New Project"));
+        ViewModel.AddNode(node);
 
-        int children = ProjectTree.Items.Count;
-        TreeViewItem t = (TreeViewItem)ProjectTree.ItemContainerGenerator.ContainerFromItem(n);
-        if (t != null)
-        {
-            t.Focus();
-            Keyboard.Focus(txtName);
-            txtName.SelectAll();
-        }
+        if (ProjectTree.ItemContainerGenerator.ContainerFromItem(node) is TreeViewItem treeViewItem)
+            FocusTreeItemForEdit(treeViewItem);
     }
 
-    private void MenuItem_AddMilestone(object sender, RoutedEventArgs e)
+    private void FocusNewChild(TreeViewItem parentTreeViewItem)
     {
-        if (sender is MenuItem mi)
-        {
-            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
-            {
-            
-                NodeModel n = new NodeModel(new Milestone("New Milestone", node.DueDate), node);
-                node.Nodes.Add(n);
-                n.UpdateParentProgress();
+        parentTreeViewItem.Focus();
+        parentTreeViewItem.ExpandSubtree();
+        Collapse(parentTreeViewItem);
+        parentTreeViewItem.IsExpanded = true;
 
-                t.Focus();
-                t.ExpandSubtree(); // force visual objects to be created
-                Collapse(t);
-                t.IsExpanded = true;
-                int children = t.Items.Count;
-                TreeViewItem tNew = (TreeViewItem)t.ItemContainerGenerator.ContainerFromIndex(children - 1);
-                tNew.Focus();
-                Keyboard.Focus(txtName);
-                txtName.SelectAll();
-            }
-        }
+        int childIndex = parentTreeViewItem.Items.Count - 1;
+        if (parentTreeViewItem.ItemContainerGenerator.ContainerFromIndex(childIndex) is TreeViewItem newItem)
+            FocusTreeItemForEdit(newItem);
     }
 
-    private void MenuItem_AddTask(object sender, RoutedEventArgs e)
+    private void FocusTreeItemForEdit(TreeViewItem treeViewItem)
     {
-        if (sender is MenuItem mi)
-        {
-            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
-            {
-                NodeModel n = new NodeModel(new Entities.Task("New Task", node.DueDate), node);
-                node.Nodes.Add(n);
-                n.UpdateParentProgress();
-
-                t.Focus();
-                t.ExpandSubtree(); // force visual objects to be created
-                Collapse(t);
-                t.IsExpanded = true;
-                int children = t.Items.Count;
-                TreeViewItem tNew = (TreeViewItem)t.ItemContainerGenerator.ContainerFromIndex(children - 1);
-                tNew.Focus();
-                Keyboard.Focus(txtName);
-                txtName.SelectAll();
-            }
-        }
+        treeViewItem.Focus();
+        Keyboard.Focus(txtName);
+        txtName.SelectAll();
     }
 
-    private void MenuItem_AddSubtask(object sender, RoutedEventArgs e)
+    private void AddChildNode(object sender, Func<NodeModel, NodeModel> createNode)
     {
-        if (sender is MenuItem mi)
-        {
-            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
-            {
-                NodeModel n = new NodeModel(new Subtask("New Subtask", node.DueDate), node);
-                node.Nodes.Add(n);
-                n.UpdateParentProgress();
+        if (!TryGetTreeNodeFromMenuItem(sender, out TreeViewItem parentTreeViewItem, out NodeModel parent))
+            return;
 
-                t.Focus();
-                t.ExpandSubtree(); // force visual objects to be created
-                Collapse(t);
-                t.IsExpanded = true;
-                int children = t.Items.Count;
-                TreeViewItem tNew = (TreeViewItem)t.ItemContainerGenerator.ContainerFromIndex(children - 1);
-                tNew.Focus();
-                Keyboard.Focus(txtName);
-                txtName.SelectAll();
-            }
-        }
+        NodeModel child = createNode(parent);
+        parent.Nodes.Add(child);
+        child.UpdateParentProgress();
+
+        FocusNewChild(parentTreeViewItem);
     }
 
-    private void MenuItem_AddProtected(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem mi)
-        {
-            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
-            {
-                    NodeModel n = new NodeModel(new ProtectedItem("New Protected"), node);
-                    node.Nodes.Add(n);
-                    n.UpdateParentProgress();
+    private void MenuItem_AddTask(object sender, RoutedEventArgs e) =>
+    AddChildNode(sender, parent => new NodeModel(new Entities.Task("New Task", parent.DueDate), parent));
 
-                    t.Focus();
-                    t.ExpandSubtree(); // force visual objects to be created
-                    Collapse(t);
-                    t.IsExpanded = true;
-                    int children = t.Items.Count;
-                    TreeViewItem tNew = (TreeViewItem)t.ItemContainerGenerator.ContainerFromIndex(children - 1);
-                    tNew.Focus();
-                    Keyboard.Focus(txtName);
-                    txtName.SelectAll();
-                
-            }
-        }
-    }
+    private void MenuItem_AddMilestone(object sender, RoutedEventArgs e) =>
+        AddChildNode(sender, parent => new NodeModel(new Milestone("New Milestone", parent.DueDate), parent));
+
+    private void MenuItem_AddSubtask(object sender, RoutedEventArgs e) =>
+        AddChildNode(sender, parent => new NodeModel(new Subtask("New Subtask", parent.DueDate), parent));
+
+    private void MenuItem_AddProtected(object sender, RoutedEventArgs e) =>
+        AddChildNode(sender, parent => new NodeModel(new ProtectedItem("New Protected"), parent));
 
     private void MenuItem_Delete(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem mi)
-        {
-            if (mi.DataContext is TreeViewItem t && t.Header is NodeModel node)
-            {
-                MessageBoxResult res = MessageBox.Show("Are you sure you want to delete " + node.Text + "?", "Delete project item", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (res == MessageBoxResult.Yes)
-                {
-                    node.Progress = 100; // "finish" node before deleting
-                    ViewModel.DeleteNode(node);
-                }
-            }
-        }
+        if (!TryGetTreeNodeFromMenuItem(sender, out _, out NodeModel node))
+            return;
+
+        MessageBoxResult result = MessageBox.Show(
+            $"Are you sure you want to delete {node.Text}?",
+            "Delete project item",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        node.Progress = 100; // "finish" node before deleting
+        ViewModel.DeleteNode(node);
     }
 
     private void Grid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -941,15 +1016,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 ViewModel?.Nodes.Clear();
 
-                XML_File_Path = DefaultPath;
-                if (File.Exists(XML_File_Path))
-                    XML_File_Path = Directory.GetCurrentDirectory() + "\\" + DateTime.Now.Ticks.ToString() + ".xml";
+                XmlFilePath = DefaultPath;
+                if (File.Exists(XmlFilePath))
+                    XmlFilePath = Directory.GetCurrentDirectory() + "\\" + DateTime.Now.Ticks.ToString() + ".xml";
 
-                ViewModel = new MainWindowModel(password);
-                ViewModel.IsFileLoaded = true;
-                DataContext = ViewModel;
-                OnPropertyChanged(nameof(WindowTitle));
-                Fire();
+                MainWindowModel newViewModel = new(password)
+                {
+                    IsFileLoaded = true
+                };
+
+                SetViewModel(newViewModel);
             }
         }
     }
@@ -966,9 +1042,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     try
                     {
                         XmlDocument doc = XMLhelper.XmlFromFile(tPath);
-                        ViewModel = new MainWindowModel(doc, password);
+                        SetViewModel(new MainWindowModel(doc, password));
 
-                        DataContext = ViewModel;
                         lastSelectedTreeViewItem = null;
                         draggedItem = null;
                         _target = null;
@@ -976,12 +1051,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
                         dpPass.IsEnabled = true;
 
-                        XML_File_Path = tPath;
+                        XmlFilePath = tPath;
                         OnPropertyChanged(nameof(WindowTitle));
 
                         Fire();
 
-                        MessageBox.Show($"{XML_File_Path} loaded", "Load file", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show($"{XmlFilePath} loaded", "Load file", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     catch (CryptographicException)
                     {
@@ -1008,13 +1083,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         //if (ViewModel.IsPKIenabled)
         //    pki = FileHelper.CreateCertStoreXML(ViewModel.CA_Certificate, ViewModel.MasterPassword);
 
-        XMLhelper.XmlToFile(ViewModel.GetAsEncryptedXML().DocumentElement, XML_File_Path);
+        XMLhelper.XmlToFile(ViewModel.GetAsEncryptedXML().DocumentElement, XmlFilePath);
 
 
         foreach (NodeModel n in ViewModel.Nodes)
             n.ResetSave(); // This is not used??
 
-        MessageBoxResult result = MessageBox.Show("Project tree saved to + " + XML_File_Path, "Save file", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBoxResult result = MessageBox.Show("Project tree saved to + " + XmlFilePath, "Save file", MessageBoxButton.OK, MessageBoxImage.Information);
 
     }
 
@@ -1023,7 +1098,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         string? fPath = null;
         if (FileHelper.SetFileName(out fPath, "Save project file", "Xml Files", "xml"))
         {
-            XML_File_Path = fPath;
+            XmlFilePath = fPath;
             Save();
             OnPropertyChanged(nameof(WindowTitle));
         }
@@ -1102,18 +1177,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     string xml = fileContent.ToStringFromByte();
                     doc.LoadXml(xml);
 
-                    ViewModel = new MainWindowModel(password);
+                    SetViewModel(new MainWindowModel(password));
                     ViewModel.LoadUnencrypted(doc);
                     ViewModel.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
 
-                    if (File.Exists(XML_File_Path))
-                        XML_File_Path = Directory.GetCurrentDirectory() + "\\" + DateTime.Now.Ticks.ToString() + ".xml";
+                    if (File.Exists(XmlFilePath))
+                        XmlFilePath = Directory.GetCurrentDirectory() + "\\" + DateTime.Now.Ticks.ToString() + ".xml";
 
 
                     ViewModel.IsFileLoaded = true;
-                    DataContext = ViewModel;
-                    OnPropertyChanged("WindowTitle");
-                    Fire();
                 }
                 catch (Exception ex)
                 {
@@ -1264,90 +1336,67 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void EncryptFilePassword()
     {
-        if (FileHelper.GetFileName(out string path, "Select file to encrypt"))
-        {
-            try
+        if (!TryGetOpenFilePath("Select file to encrypt", out string path))
+            return;
+
+        ExecuteWithUiErrorHandling(
+            () =>
             {
-                if (WpfDialogHelper.GetPassword("Encrypt file", "Enter password:", out SecureString pass))
+                if (!TryGetPassword("Encrypt file", "Enter password:", out SecureString pass))
+                    return;
+
+                using (pass)
                 {
                     if (FileHelper.EncryptFile(path, pass))
-                        MessageBox.Show($"{path} successfully encrypted");
-                    pass.Dispose();
+                        ShowInfo($"{path} successfully encrypted");
                 }
-            }
-            catch (CryptographicException)
-            {
-                MessageBox.Show($"Could not encrypt {path}", "Encryption error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+            },
+            $"Could not encrypt {path}");
     }
     private void DecryptFilePassword()
     {
-        if (FileHelper.GetFileName(out string path, "Select file to decrypt"))
-        {
-            try
+        if (!TryGetOpenFilePath("Select file to decrypt", out string path))
+            return;
+
+        ExecuteWithUiErrorHandling(
+            () =>
             {
-                if (WpfDialogHelper.GetPassword("Decrypt file", "Enter password", out SecureString pass))
+                if (!TryGetPassword("Decrypt file", "Enter password", out SecureString pass))
+                    return;
+
+                using (pass)
                 {
                     if (FileHelper.DecryptFile(path, pass))
-                        MessageBox.Show($"{path} successfully decrypted");
-                    pass.Dispose();
+                        ShowInfo($"{path} successfully decrypted");
                 }
-            }
-            catch (CryptographicException)
-            {
-                MessageBox.Show($"Could not decrypt {path}", "Encryption error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
+            },
+            $"Could not decrypt {path}");
     }
     private void EncryptFileAccount()
     {
-        string? path = null;
-        if (FileHelper.GetFileName(out path, "Select file to encrypt"))
-        {
-            try
+        if (!TryGetOpenFilePath("Select file to encrypt", out string path))
+            return;
+
+        ExecuteWithUiErrorHandling(
+            () =>
             {
                 if (FileHelper.EncryptFile(path))
-                    MessageBox.Show($"{path} successfully encrypted");
-
-            }
-            catch (CryptographicException)
-            {
-                MessageBox.Show($"Could not encrypt {path}", "Encryption error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+                    ShowInfo($"{path} successfully encrypted");
+            },
+            $"Could not encrypt {path}");
     }
     private void DecryptFileAccount()
     {
-        string? path = null;
-        if (FileHelper.GetFileName(out path, "Select file to decrypt"))
-        {
-            try
+        if (!TryGetOpenFilePath("Select file to decrypt", out string path))
+            return;
+
+        ExecuteWithUiErrorHandling(
+            () =>
             {
                 if (FileHelper.DecryptFile(path))
-                    MessageBox.Show($"{path} successfully decrypted");
-            }
-            catch (CryptographicException)
-            {
-                MessageBox.Show($"Could not decrypt {path}", "Encryption error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
+                    ShowInfo($"{path} successfully decrypted");
+            },
+            $"Could not decrypt {path}");
     }
 
     private void GenerateCertificate()
@@ -1358,40 +1407,37 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ImportCertificate()
     {
-        try
+        const string header = "Import certificate";
+
+        if (!TryGetOpenFilePath(header, out string path, "Pfx files", "pfx"))
+            return;
+
+        if (!TryGetPassword(header, "Password for pfx private key:", out SecureString pfxPass))
+            return;
+
+        using (pfxPass)
         {
-            string header = "Import certificate";
-            if (FileHelper.GetFileName(out string path, header, "Pfx files", "pfx"))
+            try
             {
-                WpfDialogHelper.GetPassword(header, "Password for pfx private key:", out SecureString pfxPass);
-
-                if (pfxPass != null)
-                    ViewModel.CA_Certificate = X509Helper.LoadPfxFromFile(path, pfxPass);
-                else
-                    ViewModel.CA_Certificate = X509Helper.LoadPfxFromFile(path);
-
-                Fire();
-
-                MessageBox.Show($"Successfully imported {path}", header, MessageBoxButton.OK, MessageBoxImage.Information);
+                ViewModel.CA_Certificate = X509Helper.LoadPfxFromFile(path, pfxPass);
+                RefreshCommandStates();
+                ShowInfo($"Successfully imported {path}", header);
             }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            catch (Exception ex)
+            {
+                ShowWarning(ex.Message, "Error");
+            }
         }
     }
 
     private void ExportCertificate()
     {
-        if (FileHelper.SetFileName(out string path, "Export certificate", "Certificate", "cer"))
-        {
-            ViewModel.EnsureCAcert();
-            X509Helper.SaveX509ToCerFile(ViewModel.CA_Certificate, path);
-            MessageBox.Show($"Certificate saved to {path}", "Certificate", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
+        if(!TryGetSaveFilePath("Export certificate", out string path, "Certificate", "cer"))
+        return;
 
-        //RSA rsa = RSA.Create();
-        //rsa.ImportSubjectPublicKeyInfo(PublicKey.FromBase64(), out _);
+        ViewModel.EnsureCAcert();
+        X509Helper.SaveX509ToCerFile(ViewModel.CA_Certificate, path);
+        ShowInfo($"Certificate saved to {path}", "Certificate");
     }
 
     private void CreateSignature()
@@ -1566,8 +1612,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     protected void OnPropertyChanged(string propertyName)
     {
-        if (PropertyChanged != null)
-            PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     #endregion

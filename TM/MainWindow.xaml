@@ -9,7 +9,7 @@
         xmlns:helpers="clr-namespace:TM.Helpers"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
-        Title="{Binding WindowTitle, RelativeSource={RelativeSource Self}}"  
+        Title="{Binding WindowTitle, RelativeSource={RelativeSource Self}}"
         Topmost="{Binding IsChecked, BindsDirectlyToSource=True, ElementName=miStayOnTop, Mode=OneWay, NotifyOnSourceUpdated=True}"
         ResizeMode="CanResize"
         Height="345"
@@ -20,9 +20,7 @@
         Icon="tasks.ico" 
         Loaded="Main_Loaded" >
 
-    <Window.DataContext>
-        <models:MainWindowModel/>
-    </Window.DataContext>
+
 
     <Window.Resources>
 
@@ -167,23 +165,24 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" FocusManager.IsFocusScope="False" >
+        <Menu Grid.Row="0" FocusManager.IsFocusScope="False" DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}">
+
             <MenuItem Header="_File">
-                <MenuItem Header="New" Command="{Binding NewCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Open" Command="{Binding OpenCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-                <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
-                <MenuItem Header="SaveAs" Command="{Binding SaveAsCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
+                <MenuItem Header="New" Command="{Binding NewCommand}" />
+                <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+                <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveCommand}" />
+                <MenuItem Header="SaveAs" Command="{Binding SaveAsCommand}" />
                 <Separator />
-                <MenuItem Header="Lock" InputGestureText="Ctrl+L" Command ="{Binding LockCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Lock" InputGestureText="Ctrl+L" Command="{Binding LockCommand}" />
                 <Separator />
-                <MenuItem Header="Change password" Command ="{Binding ChangePasswordCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Change password" Command="{Binding ChangePasswordCommand}" />
                 <Separator />
                 <MenuItem Header="Compability">
-                    <MenuItem Header="Save unecrypted" Command ="{Binding SaveUnencryptedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                    <MenuItem Header="Load unecrypted" Command ="{Binding LoadUnencryptedCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                    <MenuItem Header="Save unecrypted" Command="{Binding SaveUnencryptedCommand}" />
+                    <MenuItem Header="Load unecrypted" Command="{Binding LoadUnencryptedCommand}" />
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Close" InputGestureText="Ctrl+Q" Command="{Binding ExitCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}" />
+                <MenuItem Header="Close" InputGestureText="Ctrl+Q" Command="{Binding ExitCommand}" />
             </MenuItem>
             <MenuItem Header="_Edit" IsEnabled="{Binding IsFileLoaded}">
                 <MenuItem Command="Cut" />
@@ -194,11 +193,11 @@
                 <!--<MenuItem Header="Test" Command="models:MainWindowModel.TestCommand"  />-->
             </MenuItem>
             <MenuItem Header="Common" IsEnabled="{Binding IsFileLoaded}">
-                <MenuItem Header="Expand Tree" InputGestureText="Ctrl+E" Command="{Binding ExpandTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Collapse Tree" InputGestureText="Ctrl+R" Command="{Binding CollapseTreeCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Focus Item" InputGestureText="Ctrl+F" Command="{Binding FocusTreeItemCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Sort Tree (name)" InputGestureText="Ctrl+H" Command="{Binding SortTreeByNameCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
-                <MenuItem Header="Sort Tree (date)" InputGestureText="Ctrl+D" Command="{Binding SortTreeByDateCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
+                <MenuItem Header="Expand Tree" InputGestureText="Ctrl+E" Command="{Binding ExpandTreeCommand, ElementName=Main}"/>
+                <MenuItem Header="Collapse Tree" InputGestureText="Ctrl+R" Command="{Binding CollapseTreeCommand, ElementName=Main}"/>
+                <MenuItem Header="Focus Item" InputGestureText="Ctrl+F" Command="{Binding FocusTreeItemCommand, ElementName=Main}"/>
+                <MenuItem Header="Sort Tree (name)" InputGestureText="Ctrl+H" Command="{Binding SortTreeByNameCommand, ElementName=Main}"/>
+                <MenuItem Header="Sort Tree (date)" InputGestureText="Ctrl+D" Command="{Binding SortTreeByDateCommand, ElementName=Main}"/>
                 <Separator />
                 <MenuItem Header="Timestamp" InputGestureText="Ctrl+T"  Command="{Binding TimeStampCommand, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}}"/>
                 <Separator />

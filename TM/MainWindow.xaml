@@ -432,12 +432,12 @@
                 <!-- date picker-->
                 <DockPanel DockPanel.Dock="Bottom" Margin="2,8,2,8" Visibility="{Binding IsProjectVisible}">
                     <Label Content="Due date" VerticalContentAlignment="Center"/>
-                    <DatePicker Name="dpDueDate" VerticalContentAlignment="Center" 
+                    <DatePicker Name="dpDueDate" 
+                                VerticalContentAlignment="Center" 
                                 FirstDayOfWeek="Monday" 
                                 SelectedDate="{Binding DueDate}" 
                                 TabIndex="11" 
-                                DisplayDateEnd="{Binding DateEnd, Mode=OneWay}" 
-                                SelectedDateChanged="dpDueDate_SelectedDateChanged"  
+                                DisplayDateEnd="{Binding MaxDueDate, Mode=OneWay}" 
                                 />
                 </DockPanel>
 

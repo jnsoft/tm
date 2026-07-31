@@ -7,12 +7,12 @@ public class NodeModel : INotifyPropertyChanged
     #region props
 
     private bool constructed = false;
-    public string Id { get; set; }
-    public string Parent { get; set; }
-    public NodeModel ParentItem { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Parent { get; set; } = string.Empty;
+    public NodeModel? ParentItem { get; set; }
     public ProjectItemType NodeType { get; set; }
 
-    private string text;
+    private string text = string.Empty;
     public string Text
     {
         get => text;
@@ -22,11 +22,11 @@ public class NodeModel : INotifyPropertyChanged
                 IsChanged = true;
 
             text = value;
-            OnPropertyChanged("Text");
+            OnPropertyChanged(nameof(Text));
         }
     }
 
-    private string login;
+    private string login = string.Empty;
     public string Login
     {
         get => login;
@@ -40,7 +40,7 @@ public class NodeModel : INotifyPropertyChanged
         }
     }
 
-    private string password;
+    private string password = string.Empty;
     public string Password
     {
         get => password;
@@ -54,7 +54,7 @@ public class NodeModel : INotifyPropertyChanged
         }
     }
 
-    private string url;
+    private string url = string.Empty;
     public string Url
     {
         get => url;
@@ -64,11 +64,11 @@ public class NodeModel : INotifyPropertyChanged
                 IsChanged = true;
 
             url = value;
-            OnPropertyChanged("Url");
+            OnPropertyChanged(nameof(Url));
         }
     }
 
-    private string description;
+    private string description = string.Empty;
     public string Description
     {
         get => description;
@@ -78,7 +78,7 @@ public class NodeModel : INotifyPropertyChanged
                 IsChanged = true;
 
             description = value;
-            OnPropertyChanged("Description");
+            OnPropertyChanged(nameof(Description));
         }
     }
 
@@ -119,14 +119,28 @@ public class NodeModel : INotifyPropertyChanged
         get => dueDate;
         set
         {
-            if (dueDate != value && constructed)
+            DateTime? normalizedValue = NormalizeDueDate(value);
+
+            if (dueDate != normalizedValue && constructed)
                 IsChanged = true;
-            dueDate = value;
+
+            dueDate = normalizedValue;
             updateDueDate();
-            OnPropertyChanged("DueDate");
+            OnPropertyChanged(nameof(DueDate));
             Notify();
         }
     }
+
+    private DateTime? NormalizeDueDate(DateTime? value)
+    {
+        if (IsProtected || ParentItem is not { DueDate: DateTime parentDueDate })
+            return value;
+
+        return value is not DateTime childDueDate || childDueDate > parentDueDate
+            ? parentDueDate
+            : childDueDate;
+    }
+
     public DateTime? Finished { get; set; }
 
     private int progress;
@@ -150,14 +164,14 @@ public class NodeModel : INotifyPropertyChanged
     public bool IsExpanded
     {
         get => isExpanded;
-        set { isExpanded = value; OnPropertyChanged("IsExpanded"); }
+        set { isExpanded = value; OnPropertyChanged(nameof(IsExpanded)); }
     }
 
     private bool isSelected;
     public bool IsSelected
     {
         get => isSelected;
-        set { isSelected = value; OnPropertyChanged("IsSelected"); }
+        set { isSelected = value; OnPropertyChanged(nameof(IsSelected)); }
     }
 
     private Visibility visibility;
@@ -183,14 +197,14 @@ public class NodeModel : INotifyPropertyChanged
             isChanged = value;
             if (value)
             {
-                OnPropertyChanged("IsChanged");
-                OnPropertyChanged("ChangedString");
+                OnPropertyChanged(nameof(IsChanged));
+                OnPropertyChanged(nameof(ChangedString));
             }
         }
     }
 
-    private static object selectedItem = null;
-    public static object SelectedItem
+    private static object? selectedItem = null;
+    public static object? SelectedItem
     {
         get => selectedItem;
         private set
@@ -200,7 +214,7 @@ public class NodeModel : INotifyPropertyChanged
         }
     }
 
-    public ObservableCollection<NodeModel> Nodes { get; private set; }
+    public ObservableCollection<NodeModel> Nodes { get; private set; } = [];
 
     #endregion
 
@@ -221,8 +235,7 @@ public class NodeModel : INotifyPropertyChanged
     {
         get
         {
-            List<NodeModel> ns = new List<NodeModel>();
-            ns.Add(this);
+            List<NodeModel> ns = [this];
 
             if (!IsLeaf)
             {
@@ -324,7 +337,7 @@ public class NodeModel : INotifyPropertyChanged
 
     public bool IsFinished => Finished.HasValue;
 
-    public string FinishedString => IsFinished ? Finished.Value.ToIsoDate(false) : "";
+    public string FinishedString => Finished is DateTime finished ? finished.ToIsoDate(false) : "";
 
     public string CreatedString => Created.ToIsoDate(false);
 
@@ -338,6 +351,8 @@ public class NodeModel : INotifyPropertyChanged
                 return Changed.HasValue ? Changed.Value.ToIsoDate(false) + " " + Changed.Value.ToShortTimeString() : "";
         }
     }
+
+    public DateTime? MaxDueDate => ParentItem?.DueDate;
 
     public DateTime DateEnd
     {
@@ -700,7 +715,7 @@ public class NodeModel : INotifyPropertyChanged
 
     public void UpdateParentProgress()
     {
-        NodeModel parent = this.ParentItem;
+        NodeModel? parent = this.ParentItem;
         if (parent != null)
         {
             int oldProgress = parent.Progress;
@@ -784,11 +799,10 @@ public class NodeModel : INotifyPropertyChanged
 
     public override string ToString() => NodeType.ToString() + ": " + Text + ", " + Created.ToString() + " | (" + Nodes.Count.ToString() + ")" + " | " + IsChanged.ToString();
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected void OnPropertyChanged(string propertyName)
+    protected void OnPropertyChanged(string? propertyName)
     {
-        if (PropertyChanged != null)
-            PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

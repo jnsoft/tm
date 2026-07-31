@@ -103,14 +103,14 @@ public class MainWindowModelTests
         ps = model.GetProjects();
 
         // Act
-        byte[] orgSalt = model.Salt;
+        byte[] orgSalt = model.Salt ?? [];
         model.ChangeMasterPassword(pass2.ToSecureString(), pass4.ToSecureString());
         List<Project> ps2 = model.GetProjects();
-        byte[] newSalt = model.Salt;
+        byte[] newSalt = model.Salt ?? [];
 
         model.ChangeMasterPassword(pass6.ToSecureString(), pass5.ToSecureString());
         List<Project> ps3 = model.GetProjects();
-        byte[] newnewSalt = model.Salt;
+        byte[] newnewSalt = model.Salt ?? [];
 
 
         // Assert
@@ -180,8 +180,8 @@ public class MainWindowModelTests
         int hash1 = ps[0].GetHashCode();
         int hash2 = ps2[0].GetHashCode();
 
-        byte[] key1 = model.GetUnprotectedPrivateKey();
-        byte[] key2 = model2.GetUnprotectedPrivateKey();
+        byte[] key1 = model.GetUnprotectedPrivateKey() ?? [];
+        byte[] key2 = model2.GetUnprotectedPrivateKey() ?? [];
 
 
         // Assert
@@ -215,7 +215,7 @@ public class MainWindowModelTests
         }
 
         // Assert
-        Assert.IsTrue(doc.DocumentElement.ToString().Length >= 0);
+        Assert.IsGreaterThanOrEqualTo(0, doc.DocumentElement.ToString().Length);
         Assert.IsFalse(saveWithWrongPassword);
     }
 

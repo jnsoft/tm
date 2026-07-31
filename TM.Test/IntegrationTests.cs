@@ -20,7 +20,6 @@ public class IntegrationTests
         // Act
         XMLhelper.XmlToFile(model.GetAsEncryptedXML().DocumentElement, fn);
         model.ClearAll();
-        model = null;
 
         XmlDocument doc = XMLhelper.XmlFromFile(fn);
         model = new MainWindowModel(doc, new string("secret").ToSecureString());

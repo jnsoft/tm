@@ -791,10 +791,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (item != null)
         {
             item.Password = ViewModel.EncryptSecret(txtPass.Text);
-        }
 
-        else
-        {
 
             SecurityHelper.ZeroString(txtPass.Text);
             txtPass.Text = "";

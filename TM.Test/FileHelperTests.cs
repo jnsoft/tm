@@ -16,8 +16,8 @@ public class FileHelperTests
         string filecontent2 = "this is another file";
         string filecontent3 = "this is the third file";
 
-        string pass = new string("secret");
-        string pass2 = new string("secret");
+        string pass = new("secret");
+        string pass2 = new("secret");
 
         byte[] key = SecurityHelper.GetRandomKey(32);
         byte[] salt = SecurityHelper.GetRandomKey(32);
@@ -92,12 +92,12 @@ public class FileHelperTests
 
         File.WriteAllText(fn1, filecontent1);
 
-        string pass = new string("secret");
-        string pass2 = new string("secret");
+        string pass = new("secret");
+        string pass2 = new("secret");
 
         MainWindowModel model = new MainWindowModel(pass.ToSecureString());
         MainWindowModel model2 = new MainWindowModel();
-        model2.SetMasterKey(pass2.ToSecureString(), model.Salt);
+        model2.SetMasterKey(pass2.ToSecureString(), model.Salt?? []);
 
         byte[] salt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
         byte[] key = model.DeriveKey("test file encryption", salt);

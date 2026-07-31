@@ -2,7 +2,9 @@
 
 namespace TM.Services;
 
-public sealed class SecurityToolsService(UserInteractionService interactions, ShellService shell)
+public sealed class SecurityToolsService(UserInteractionService interactions, 
+    ShellService shell,
+    ProjectCryptoService crypto)
 {
     public void EncodeFileToBase64()
     {
@@ -41,7 +43,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
     }
 
-    public void EncryptFile(MainWindowModel model)
+    public void EncryptFile(ProjectDocument model)
     {
         if (!interactions.TryGetOpenFilePath("Select file to encrypt", out string path))
             return;
@@ -49,8 +51,8 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         byte[]? key = null;
         try
         {
-            byte[] salt = SecurityHelper.GetRandomKey(MainWindowModel.SALT_LEN);
-            key = model.DeriveKey("file encryption", salt);
+            byte[] salt = SecurityHelper.GetRandomKey(ProjectCryptoService.SaltLength);
+            key = crypto.DeriveKey(model, "file encryption", salt);
 
             if (FileHelper.EncryptFile(path, ref key, salt))
                 interactions.ShowInfo($"{path} successfully encrypted");
@@ -65,11 +67,11 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
         finally
         {
-            MainWindowModel.ClearArr(ref key);
+            ProjectCryptoService.ClearArray(ref key);
         }
     }
 
-    public void DecryptFile(MainWindowModel model)
+    public void DecryptFile(ProjectDocument model)
     {
         if (!interactions.TryGetOpenFilePath("Select file to decrypt", out string path))
             return;
@@ -78,7 +80,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         try
         {
             byte[] salt = FileHelper.ReadSaltFromFile(path);
-            key = model.DeriveKey("file encryption", salt);
+            key = crypto.DeriveKey(model, "file encryption", salt);
 
             if (FileHelper.DecryptFile(path, ref key))
                 interactions.ShowInfo($"{path} successfully decrypted");
@@ -93,7 +95,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
         finally
         {
-            MainWindowModel.ClearArr(ref key);
+            ProjectCryptoService.ClearArray(ref key);
         }
     }
 
@@ -165,13 +167,13 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
             $"Could not decrypt {path}");
     }
 
-    public void GenerateCertificate(MainWindowModel model)
+    public void GenerateCertificate(ProjectDocument model)
     {
-        model.EnsureCAcert();
+        crypto.EnsureCaCertificate(model);
         interactions.ShowInfo("Signing certificate ready.", "Certificate");
     }
 
-    public void ImportCertificate(MainWindowModel model)
+    public void ImportCertificate(ProjectDocument model)
     {
         const string header = "Import certificate";
 
@@ -185,7 +187,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         {
             try
             {
-                model.CA_Certificate = X509Helper.LoadPfxFromFile(path, pfxPass);
+                model.Security.CaCertificate = X509Helper.LoadPfxFromFile(path, pfxPass);
                 interactions.ShowInfo($"Successfully imported {path}", header);
             }
             catch (Exception ex)
@@ -195,24 +197,24 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
     }
 
-    public void ExportCertificate(MainWindowModel model)
+    public void ExportCertificate(ProjectDocument model)
     {
         if (!interactions.TryGetSaveFilePath("Export certificate", out string path, "Certificate", "cer"))
             return;
 
-        model.EnsureCAcert();
-        X509Helper.SaveX509ToCerFile(model.CA_Certificate, path);
+        crypto.EnsureCaCertificate(model);
+        X509Helper.SaveX509ToCerFile(model.Security.CaCertificate, path);
         interactions.ShowInfo($"Certificate saved to {path}", "Certificate");
     }
 
-    public void CreateSignature(MainWindowModel model)
+    public void CreateSignature(ProjectDocument model)
     {
         if (!interactions.TryGetOpenFilePath("Select file to sign", out string path))
             return;
 
         try
         {
-            byte[] signature = model.SignFile(path);
+            byte[] signature = crypto.SignFile(model, path);
             string signatureFileName = $"{path}.p7c";
 
             if (File.Exists(signatureFileName))
@@ -265,19 +267,19 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
     }
 
-    public void GenerateKeys(MainWindowModel model)
+    public void GenerateKeys(ProjectDocument model)
     {
-        model.GenerateNewPKIpair();
+        crypto.GenerateKeys(model);
         interactions.ShowInfo("New ECDH keypair generated.", "ECDH");
     }
 
-    public void CopyPublicKey(MainWindowModel model)
+    public void CopyPublicKey(ProjectDocument model)
     {
-        if (model.PublicKey is not null)
-            shell.CopyToClipboard(model.PublicKey, 300);
+        if (model.Security.PublicKey is not null)
+            shell.CopyToClipboard(model.Security.PublicKey, 300);
     }
 
-    public void EncryptWithPublicKey(MainWindowModel model)
+    public void EncryptWithPublicKey(ProjectDocument model)
     {
         if (!interactions.TryGetOpenFilePath("Select file to encrypt", out string path))
             return;
@@ -291,12 +293,12 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
             if (File.Exists(newFilename))
                 File.Delete(newFilename);
 
-            byte[]? privateKey = model.GetUnprotectedPrivateKey();
+            byte[]? privateKey = crypto.GetUnprotectedPrivateKey(model);
             byte[]? symmetricKey = SecurityHelper.DeriveSymmetricKey(privateKey, publicKey.FromBase64());
-            MainWindowModel.ClearArr(ref privateKey);
+            ProjectCryptoService.ClearArray(ref privateKey);
 
             byte[] encrypted = SecurityHelper.GCMEncrypt(File.ReadAllBytes(path), symmetricKey);
-            MainWindowModel.ClearArr(ref symmetricKey);
+            ProjectCryptoService.ClearArray(ref symmetricKey);
 
             File.WriteAllBytes(newFilename, encrypted);
             interactions.ShowInfo($"{newFilename} successfully encrypted");
@@ -307,7 +309,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         }
     }
 
-    public void DecryptWithPrivateKey(MainWindowModel model)
+    public void DecryptWithPrivateKey(ProjectDocument model)
     {
         if (!interactions.TryGetOpenFilePath("Select file to decrypt", out string path))
             return;
@@ -325,12 +327,12 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
             while (File.Exists(newFilename))
                 newFilename += ".new";
 
-            byte[]? privateKey = model.GetUnprotectedPrivateKey();
+            byte[]? privateKey = crypto.GetUnprotectedPrivateKey(model);
             byte[]? symmetricKey = SecurityHelper.DeriveSymmetricKey(privateKey, publicKey.FromBase64());
-            MainWindowModel.ClearArr(ref privateKey);
+            ProjectCryptoService.ClearArray(ref privateKey);
 
             byte[] decrypted = SecurityHelper.GCMDecrypt(File.ReadAllBytes(path), symmetricKey);
-            MainWindowModel.ClearArr(ref symmetricKey);
+            ProjectCryptoService.ClearArray(ref symmetricKey);
 
             File.WriteAllBytes(newFilename, decrypted);
             interactions.ShowInfo($"{newFilename} successfully decrypted");
@@ -377,7 +379,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         interactions.ShowInfo($"Successfully hashed {path} to {outputFile}", "Hash calculated");
     }
 
-    public void CreateHmac(MainWindowModel model, string algorithm)
+    public void CreateHmac(ProjectDocument model, string algorithm)
     {
         string normalized = NormalizeAlgorithm(algorithm);
 
@@ -385,7 +387,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
             return;
 
         byte[] salt = SecurityHelper.GetRandomKey(HashHelper.SALT_LEN);
-        byte[] key = model.DeriveKey("HMAC", salt, 64);
+        byte[] key = crypto.DeriveKey(model, "HMAC", salt, 64);
 
         string outputFile = normalized switch
         {
@@ -401,7 +403,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
         interactions.ShowInfo($"Successfully signed {path} to {outputFile}", "HMAC calculated");
     }
 
-    public void VerifyHmac(MainWindowModel model, string algorithm)
+    public void VerifyHmac(ProjectDocument model, string algorithm)
     {
         string normalized = NormalizeAlgorithm(algorithm);
 
@@ -449,7 +451,7 @@ public sealed class SecurityToolsService(UserInteractionService interactions, Sh
             return;
         }
 
-        byte[] key = model.DeriveKey("HMAC", salt, 64);
+        byte[] key = crypto.DeriveKey(model, "HMAC", salt, 64);
 
         bool verified = normalized switch
         {

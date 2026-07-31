@@ -20,7 +20,7 @@ public partial class App : Application
         services.AddSingleton<ShellService>();
         services.AddSingleton<ProjectDocumentService>();
         services.AddSingleton<SecurityToolsService>();
-
+        services.AddSingleton<ProjectCryptoService>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 

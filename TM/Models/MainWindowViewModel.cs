@@ -14,6 +14,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly SecurityToolsService securityToolsService;
     private readonly UserInteractionService interactions;
     private readonly ShellService shell;
+    private readonly ProjectCryptoService crypto;
 
     private ProjectDocumentSession session;
     private NodeModel? selectedNode;
@@ -42,12 +43,14 @@ public sealed class MainWindowViewModel : ObservableObject
         ProjectDocumentService projectDocumentService,
         SecurityToolsService securityToolsService,
         UserInteractionService interactions,
-        ShellService shell)
+        ShellService shell,
+        ProjectCryptoService crypto)
     {
         this.projectDocumentService = projectDocumentService;
         this.securityToolsService = securityToolsService;
         this.interactions = interactions;
         this.shell = shell;
+        this.crypto = crypto;
 
         session = projectDocumentService.CreateEmptySession();
         AttachDocument(session.Model);
@@ -134,7 +137,7 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     
-    public MainWindowModel Document => session.Model;
+    public ProjectDocument Document => session.Model;
     public string CurrentFilePath => session.FilePath;
     public ObservableCollection<NodeModel> Nodes => Document.Nodes;
     public ObservableCollection<ListItemModel> Todos => Document.Todos;
@@ -338,22 +341,9 @@ public sealed class MainWindowViewModel : ObservableObject
         if (SelectedNode is null)
             return;
 
-        if (!string.IsNullOrWhiteSpace(SelectedNode.Password))
-        {
-            try
-            {
-                EditablePassword = Document.DecryptSecret(SelectedNode.Password);
-            }
-            catch
-            {
-                interactions.ShowWarning("Password decryption failed, resetting password.", "Decryption failed");
-                EditablePassword = string.Empty;
-            }
-        }
-        else
-        {
-            EditablePassword = string.Empty;
-        }
+        EditablePassword = string.IsNullOrWhiteSpace(SelectedNode.Password)
+            ? string.Empty
+            : crypto.DecryptSecret(Document, SelectedNode.Password);
 
         IsPasswordEditorActive = true;
     }
@@ -363,7 +353,7 @@ public sealed class MainWindowViewModel : ObservableObject
         if (SelectedNode is null)
             return;
 
-        SelectedNode.Password = Document.EncryptSecret(EditablePassword);
+        SelectedNode.Password = crypto.EncryptSecret(Document, EditablePassword);
         SecurityHelper.ZeroString(EditablePassword);
         EditablePassword = string.Empty;
         IsPasswordEditorActive = false;
@@ -423,7 +413,7 @@ public sealed class MainWindowViewModel : ObservableObject
             SetSession(newSession);
     }
 
-    private void Lock() => Document.Lock();
+    private void Lock() => crypto.Lock(Document);
 
     private void ChangePassword()
     {
@@ -433,7 +423,7 @@ public sealed class MainWindowViewModel : ObservableObject
         if (!interactions.TryGetPassword("Change password", "Enter new password:", out SecureString newPassword))
             return;
 
-        bool changed = Document.ChangeMasterPassword(oldPassword, newPassword);
+        bool changed = crypto.ChangeMasterPassword(Document, oldPassword, newPassword);
 
         if (changed)
             interactions.ShowInfo("Password changed successfully", "Password");
@@ -452,7 +442,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void Exit()
     {
-        Document.ClearAll();
+        crypto.ClearAll(Document);
         shell.Shutdown();
     }
 
@@ -479,7 +469,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private void CopySelectedPassword()
     {
         if (SelectedNode is { IsProtected: true })
-            shell.CopyToClipboard(Document.DecryptSecret(SelectedNode.Password), SecondsToHoldPassword);
+            shell.CopyToClipboard(crypto.DecryptSecret(Document, SelectedNode.Password), SecondsToHoldPassword);
     }
 
     private void CopySelectedLogin()
@@ -497,7 +487,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool CanSave() => Document.IsFileLoaded && !Document.IsLocked && !IsPasswordEditorActive;
     private bool IsFileLoaded() => Document.IsFileLoaded;
     private bool IsFileLoadedAndUnlocked() => Document.IsFileLoaded && !Document.IsLocked;
-    private bool IsPkiEnabled() => Document.IsPKIenabled;
+    private bool IsPkiEnabled() => Document.IsPkiEnabled;
     private bool IsDiffieHellmanEnabled() => Document.IsDiffieHellmanEnabled;
     private bool CanCopyProtectedFields() => SelectedNode is { IsProtected: true } && IsFileLoadedAndUnlocked();
 
@@ -520,30 +510,42 @@ public sealed class MainWindowViewModel : ObservableObject
         RefreshCommandStates();
     }
 
-    private void AttachDocument(MainWindowModel document)
+    private void AttachDocument(ProjectDocument document)
     {
         document.PropertyChanged -= DocumentPropertyChanged;
         document.PropertyChanged += DocumentPropertyChanged;
+
+        document.Security.PropertyChanged -= SecurityPropertyChanged;
+        document.Security.PropertyChanged += SecurityPropertyChanged;
     }
 
     private void DocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainWindowModel.IsFileLoaded))
+        if (e.PropertyName is nameof(ProjectDocument.IsFileLoaded))
         {
             OnPropertyChanged(nameof(IsFileLoadedState));
             OnPropertyChanged(nameof(WindowTitle));
         }
 
-        if (e.PropertyName is nameof(MainWindowModel.Todos))
+        if (e.PropertyName is nameof(ProjectDocument.Todos))
             OnPropertyChanged(nameof(Todos));
 
-        if (e.PropertyName is nameof(MainWindowModel.Nodes))
+        if (e.PropertyName is nameof(ProjectDocument.Nodes))
             OnPropertyChanged(nameof(Nodes));
 
-        if (e.PropertyName is nameof(MainWindowModel.IsFileLoaded)
-            or nameof(MainWindowModel.IsLocked)
-            or nameof(MainWindowModel.PublicKey)
-            or nameof(MainWindowModel.CA_Certificate))
+        if (e.PropertyName is nameof(ProjectDocument.IsFileLoaded)
+            or nameof(ProjectDocument.IsLocked))
+        {
+            RefreshCommandStates();
+        }
+    }
+
+    private void SecurityPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ProjectCryptoState.PublicKey)
+            or nameof(ProjectCryptoState.CaCertificate)
+            or nameof(ProjectCryptoState.IsDiffieHellmanEnabled)
+            or nameof(ProjectCryptoState.IsPkiEnabled))
         {
             RefreshCommandStates();
         }

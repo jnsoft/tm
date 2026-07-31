@@ -1,14 +1,17 @@
 ﻿
+using System.Reflection.Metadata;
+using TM.Entities;
+
 namespace TM.Services;
 
-public sealed class ProjectDocumentService(UserInteractionService interactions)
+public sealed class ProjectDocumentService(UserInteractionService interactions, ProjectCryptoService crypto)
 {
     private const string DefaultFileName = "projects.xml";
     private const string FileOpenError = "Failed to open file";
 
     public static string DefaultPath => Path.Combine(Directory.GetCurrentDirectory(), DefaultFileName);
 
-    public ProjectDocumentSession CreateEmptySession() => new(new MainWindowModel(), DefaultPath);
+    public ProjectDocumentSession CreateEmptySession() => new(new ProjectDocument(), DefaultPath);
 
     public ProjectDocumentSession? CreateNewSession(bool hasExistingContent)
     {
@@ -25,12 +28,10 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
         if (!interactions.TryGetPassword("New collection", "Set password:", out SecureString password))
             return null;
 
-        MainWindowModel model = new(password)
-        {
-            IsFileLoaded = true
-        };
+        ProjectDocument document = new();
+        crypto.InitializeNew(document, password);
 
-        return new ProjectDocumentSession(model, BuildNewProjectFilePath());
+        return new ProjectDocumentSession(document, BuildNewProjectFilePath());
     }
 
     public ProjectDocumentSession? OpenSession()
@@ -44,10 +45,11 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
                 return null;
 
             XmlDocument doc = XMLhelper.XmlFromFile(path);
-            MainWindowModel model = new(doc, password);
+            ProjectDocument document = new();
+            LoadEncryptedDocument(document, doc, password);
 
             interactions.ShowInfo($"{path} loaded", "Load file");
-            return new ProjectDocumentSession(model, path);
+            return new ProjectDocumentSession(document, path);
         }
         catch (CryptographicException)
         {
@@ -63,7 +65,7 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
 
     public void SaveSession(ProjectDocumentSession session)
     {
-        XmlElement root = session.Model.GetAsEncryptedXML().DocumentElement
+        XmlElement root = crypto.GetAsEncryptedXml(session.Model).DocumentElement
             ?? throw new InvalidOperationException("Encrypted XML has no root element.");
 
         XMLhelper.XmlToFile(root, session.FilePath);
@@ -84,7 +86,7 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
         return newSession;
     }
 
-    public void SaveUnencryptedSession(MainWindowModel model)
+    public void SaveUnencryptedSession(ProjectDocument document)
     {
         if (!interactions.TryGetSaveFilePath("Save unencrypted project file", out string path, "Save Files", "sav"))
             return;
@@ -94,7 +96,7 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
 
         try
         {
-            XmlDocument doc = model.GetUnencryptedXML(pass);
+            XmlDocument doc = crypto.GetUnencryptedXml(document, pass);
             byte[] key = SecurityHelper.GetRandomKey(32);
             string fileContent = SecurityHelper.GCMEncrypt(doc.InnerXml.ToByte(), key).ToBase64();
             File.WriteAllText(path, fileContent);
@@ -135,14 +137,16 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
                 XmlDocument doc = new();
                 doc.LoadXml(fileContent.ToStringFromByte());
 
-                MainWindowModel model = new(password);
-                model.LoadUnencrypted(doc);
-                model.EncryptProtectedItemsAfterLoadingUnencryptedProjects();
-                model.IsFileLoaded = true;
+                ProjectDocument document = new();
+                crypto.SetMasterKey(document, password);
+                document.LoadUnencrypted(doc);
+                crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(document);
+                document.IsFileLoaded = true;
+                document.IsLocked = false;
 
-                MainWindowModel.ClearArr(ref byteKey);
+                ProjectCryptoService.ClearArray(ref byteKey);
 
-                return new ProjectDocumentSession(model, BuildNewProjectFilePath());
+                return new ProjectDocumentSession(document, BuildNewProjectFilePath());
             }
         }
         catch (Exception ex)
@@ -150,6 +154,37 @@ public sealed class ProjectDocumentService(UserInteractionService interactions)
             interactions.ShowError($"Could not load {filePath}. Please check file. {ex.Message}", "Load unencrypted file");
             return null;
         }
+    }
+
+    private void LoadEncryptedDocument(ProjectDocument document, XmlDocument doc, SecureString password)
+    {
+        XmlElement root = doc.DocumentElement
+            ?? throw new ArgumentException("XML document has no root element", nameof(doc));
+
+        byte[] salt = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "salt", false).FromBase64();
+        crypto.SetMasterKey(document, password, salt);
+
+        byte[] pepper = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "pepper", false).FromBase64();
+        byte[] innerSalt = XMLhelper.GetInnerTextFromNode(root.ChildNodes, "innersalt", false).FromBase64();
+
+        XMLhelper.DecryptSimplified(
+            doc,
+            crypto.DeriveKey(document, "projects", innerSalt).ToBase64().ToSecureString(),
+            pepper);
+
+        List<XmlNode> projects = root.ChildNodes.FindAllNodesByName("project", true, true);
+        document.LoadProjects(Project.FromXml(projects));
+
+        XmlNode keyStore = XMLhelper.FindNodeByName(root.ChildNodes, "key_store", false);
+        if (keyStore is not null)
+            crypto.LoadKeyStore(document, keyStore);
+
+        XmlNode certStore = XMLhelper.FindNodeByName(root.ChildNodes, "cert_store", false);
+        if (certStore is not null)
+            crypto.LoadCertStore(document, certStore);
+
+        document.IsLocked = false;
+        document.IsFileLoaded = true;
     }
 
     private static string BuildNewProjectFilePath()

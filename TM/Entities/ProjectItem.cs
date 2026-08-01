@@ -43,14 +43,14 @@ namespace TM.Entities
             UUID = id;
 
             ProtectedItems = new List<ProtectedItem>();
-            Name = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "Name", false);
-            Description = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "Description", false);
-            Priority = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "Priority", false).ToEnumSafe<Priority>();
+            Name = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "name", false);
+            Description = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "description", false);
+            Priority = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "priority", false).ToEnumSafe<Priority>();
             // Difficulty
             Created = fromDate(XMLhelper.GetInnerTextFromNode(node.ChildNodes, "created", false));
             string d = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "due_date", false);
             if (!string.IsNullOrWhiteSpace(d))
-                DueDate = fromDate(d);
+                DueDate = fromDate(d, false);
             Changed = fromDate(XMLhelper.GetInnerTextFromNode(node.ChildNodes, "changed", false));
             d = XMLhelper.GetInnerTextFromNode(node.ChildNodes, "finished", false);
             if (!string.IsNullOrWhiteSpace(d))
@@ -66,11 +66,13 @@ namespace TM.Entities
                     ProtectedItems.Add(new ProtectedItem(n));
         }
 
-        public static DateTime fromDate(string s)
+        public static DateTime fromDate(string s, bool includeTime = true)
         {
             try
             {
-                return s.FromIsoDate(true);
+                DateTime parsed = s.FromIsoDate(time: includeTime);
+                DateTime wallClockValue = DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified);
+                return wallClockValue;
             }
             catch (Exception)
             {

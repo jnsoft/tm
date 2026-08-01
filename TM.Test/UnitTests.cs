@@ -10,87 +10,68 @@ public class UnitTests
     [TestMethod]
     public void TestProtectedItemToAndFromXml()
     {
-        // Arrange
-        ProtectedItem x = new ProtectedItem("test");
-        x.Password = "test";
+        ProtectedItem item = new("test")
+        {
+            Password = "test"
+        };
 
-        // Act
-        XmlDocument doc = x.ToXml();
-        ProtectedItem x2 = new ProtectedItem(doc.DocumentElement);
+        XmlDocument doc = item.ToXml();
+        ProtectedItem roundTripped = new(doc.DocumentElement);
 
-
-        // Assert
-        Assert.AreEqual(x.Changed.Value, x2.Changed.Value);
-        Assert.AreEqual(x.GetHashCode(), x2.GetHashCode());
-        Assert.AreEqual(x.ToXml().InnerXml, x2.ToXml().InnerXml);
+        Assert.AreEqual(item.Changed.Value, roundTripped.Changed.Value);
+        Assert.AreEqual(item.GetHashCode(), roundTripped.GetHashCode());
+        Assert.AreEqual(item.ToXml().InnerXml, roundTripped.ToXml().InnerXml);
     }
 
     [TestMethod]
     public void TestSubtaskToAndFromXml()
     {
-        // Arrange
-        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
-        Subtask x = Projects.First().Milestones.First().Tasks.First().SubTasks.First();
+        List<Project> projects = TestDataBuilder.CreateSampleProjects();
+        Subtask item = projects.First().Milestones.First().Tasks.First().SubTasks.First();
 
-        // Act
-        XmlDocument doc = x.ToXml();
-        Subtask x2 = new Subtask(doc.DocumentElement);
+        XmlDocument doc = item.ToXml();
+        Subtask roundTripped = new(doc.DocumentElement);
 
-        // Assert
-        Assert.AreEqual(x.GetHashCode(), x2.GetHashCode());
-        Assert.AreEqual(x.ToXml().InnerXml, x2.ToXml().InnerXml);
+        Assert.AreEqual(item.GetHashCode(), roundTripped.GetHashCode());
+        Assert.AreEqual(item.ToXml().InnerXml, roundTripped.ToXml().InnerXml);
     }
 
     [TestMethod]
     public void TestTaskToAndFromXml()
     {
-        // Arrange
-        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
-        Task t = Projects.First().Milestones.First().Tasks.First();
+        List<Project> projects = TestDataBuilder.CreateSampleProjects();
+        Task item = projects.First().Milestones.First().Tasks.First();
 
-        // Act
-        XmlDocument doc = t.ToXml();
-        Task t2 = new Task(doc.DocumentElement);
+        XmlDocument doc = item.ToXml();
+        Task roundTripped = new(doc.DocumentElement);
 
-        string xml_org = t.ToXml().InnerXml;
-        string xml_new = t2.ToXml().InnerXml;
-
-        // Assert
-        Assert.AreEqual(t.GetHashCode(), t2.GetHashCode());
-        Assert.AreEqual(xml_org, xml_new);
+        Assert.AreEqual(item.GetHashCode(), roundTripped.GetHashCode());
+        Assert.AreEqual(item.ToXml().InnerXml, roundTripped.ToXml().InnerXml);
     }
 
     [TestMethod]
     public void TestMilestoneToAndFromXml()
     {
-        // Arrange
-        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
-        Milestone x = Projects.First().Milestones.First();
+        List<Project> projects = TestDataBuilder.CreateSampleProjects();
+        Milestone item = projects.First().Milestones.First();
 
-        // Act
-        XmlDocument doc = x.ToXml();
-        Milestone x2 = new Milestone(doc.DocumentElement);
+        XmlDocument doc = item.ToXml();
+        Milestone roundTripped = new(doc.DocumentElement);
 
-
-        // Assert
-        Assert.AreEqual(x.GetHashCode(), x2.GetHashCode());
-        Assert.AreEqual(x.ToXml().InnerXml, x2.ToXml().InnerXml);
+        Assert.AreEqual(item.GetHashCode(), roundTripped.GetHashCode());
+        Assert.AreEqual(item.ToXml().InnerXml, roundTripped.ToXml().InnerXml);
     }
 
     [TestMethod]
     public void TestProjectToAndFromXml()
     {
-        // Arrange
-        List<Project> Projects = ProjectDocumentTests.getSampleProjects();
-        Project x = Projects.First();
+        List<Project> projects = TestDataBuilder.CreateSampleProjects();
+        Project item = projects.First();
 
-        // Act
-        XmlDocument doc = x.ToXml();
-        Project x2 = new Project(doc.DocumentElement);
+        XmlDocument doc = item.ToXml();
+        Project roundTripped = new(doc.DocumentElement);
 
-
-        // Assert
-        Assert.AreEqual(x.GetHashCode(), x2.GetHashCode());
-        Assert.AreEqual(x.ToXml().InnerXml, x2.ToXml().InnerXml);
+        Assert.AreEqual(item.GetHashCode(), roundTripped.GetHashCode());
+        Assert.AreEqual(item.ToXml().InnerXml, roundTripped.ToXml().InnerXml);
     }
 }

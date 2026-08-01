@@ -8,72 +8,68 @@ public class IntegrationTests
     private static readonly ProjectCryptoService Crypto = new();
 
     [TestMethod]
-    public void TestSaveAndOpenXmlFile()
+    public void SaveAndOpenEncryptedXml_RoundTripsDocument()
     {
-        // Arrange
-        string fn = Directory.GetCurrentDirectory() + "\\file1.sav";
-        if (File.Exists(fn))
-            File.Delete(fn);
+        string filePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.xml");
 
-        ProjectDocument model = new ProjectDocument();
-        Crypto.InitializeNew(model, new string("secret").ToSecureString());
-        model.LoadProjects(ProjectDocumentTests.getSampleProjects());
-        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
-        Crypto.GenerateKeys(model);
-        Crypto.EnsureCaCertificate(model);
+        try
+        {
+            ProjectDocument model = TestDataBuilder.CreateLoadedEncryptedDocument(Crypto);
+            Crypto.GenerateKeys(model);
+            Crypto.EnsureCaCertificate(model);
 
-        // Act
-        XMLhelper.XmlToFile(Crypto.GetAsEncryptedXml(model).DocumentElement, fn);
-        Crypto.ClearAll(model);
+            XMLhelper.XmlToFile(Crypto.GetAsEncryptedXml(model).DocumentElement, filePath);
+            Crypto.ClearAll(model);
 
-        XmlDocument doc = XMLhelper.XmlFromFile(fn);
-        model = new ProjectDocument();
-        Crypto.LoadEncryptedDocument(model, doc, new string("secret").ToSecureString());
+            XmlDocument doc = XMLhelper.XmlFromFile(filePath);
+            ProjectDocument loaded = new();
+            Crypto.LoadEncryptedDocument(loaded, doc, "secret".ToCharArray().ToSecureStringAndClear());
 
-        // Assert
-        Assert.IsFalse(model.IsEmpty);
-        Assert.IsTrue(model.IsDiffieHellmanEnabled);
-        Assert.IsTrue(model.Security.IsPkiEnabled);
+            Assert.IsFalse(loaded.IsEmpty);
+            Assert.IsTrue(loaded.IsDiffieHellmanEnabled);
+            Assert.IsTrue(loaded.Security.IsPkiEnabled);
+            Assert.HasCount(1, loaded.Nodes);
+        }
+        finally
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+        }
     }
 
     [TestMethod]
-    public void TestSaveAndOpenXmlFileUnencrypted()
+    public void SaveAndOpenUnencryptedPayload_RoundTripsDocument()
     {
-        // Arrange
-        string fn = Directory.GetCurrentDirectory() + "\\file1.sav";
-        if (File.Exists(fn))
-            File.Delete(fn);
+        string filePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sav");
 
-        ProjectDocument model = new ProjectDocument();
-        Crypto.InitializeNew(model, new string("secret").ToSecureString());
-        model.LoadProjects(ProjectDocumentTests.getSampleProjects());
-        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model);
+        try
+        {
+            ProjectDocument model = TestDataBuilder.CreateLoadedEncryptedDocument(Crypto);
 
-        // Act
-        XmlDocument doc = Crypto.GetUnencryptedXml(model, new string("secret").ToSecureString());
-        byte[] key = SecurityHelper.GetRandomKey(32);
-        string fileContent = SecurityHelper.GCMEncrypt(doc.InnerXml.ToByte(), key).ToBase64();
-        File.WriteAllText(fn, fileContent);
-        string str_key = key.ToBase64();
+            XmlDocument unencrypted = Crypto.GetUnencryptedXml(model, "secret".ToCharArray().ToSecureStringAndClear());
+            byte[] key = SecurityHelper.GetRandomKey(32);
+            string fileContent = SecurityHelper.GCMEncrypt(unencrypted.InnerXml.ToByte(), key).ToBase64();
+            File.WriteAllText(filePath, fileContent);
 
-        byte[] bytekey = str_key.FromBase64();
-        string fileStringContent = File.ReadAllText(fn);
-        byte[] fileContent2 = SecurityHelper.GCMDecrypt(fileStringContent.FromBase64(), bytekey);
-        XmlDocument doc2 = new XmlDocument();
-        string xml = fileContent2.ToStringFromByte();
-        doc2.LoadXml(xml);
+            byte[] decryptedBytes = SecurityHelper.GCMDecrypt(
+                File.ReadAllText(filePath).FromBase64(),
+                key);
 
-        ProjectDocument model2 = new ProjectDocument();
-        Crypto.InitializeNew(model2, new string("secret").ToSecureString());
-        model2.LoadUnencrypted(doc);
-        Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(model2);
+            XmlDocument reloadedXml = new();
+            reloadedXml.LoadXml(decryptedBytes.ToStringFromByte());
 
+            ProjectDocument loaded = new();
+            Crypto.InitializeNew(loaded, "secret".ToCharArray().ToSecureStringAndClear());
+            loaded.LoadUnencrypted(reloadedXml);
+            Crypto.EncryptProtectedItemsAfterLoadingUnencryptedProjects(loaded);
 
-        // Assert
-        Assert.IsTrue(!model2.IsEmpty);
-        Assert.AreEqual(model.Nodes.Count, model2.Nodes.Count);
-        //Assert.AreEqual(ps[0].AllProtectedItems()[0].UUID, ps2[0].AllProtectedItems()[0].UUID); // model vs model2
-        //Assert.AreNotEqual(ps[0].AllProtectedItems()[0].Password, ps2[0].AllProtectedItems()[0].Password); // unencrypted passwords should differ between model and model2
-        //Assert.AreEqual(pass, pass2); // check if unencrypted password from protected item in model matches that password in model2
+            Assert.IsFalse(loaded.IsEmpty);
+            Assert.HasCount(model.Nodes.Count, loaded.Nodes);
+        }
+        finally
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+        }
     }
 }

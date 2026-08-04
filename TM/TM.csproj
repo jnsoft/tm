@@ -11,7 +11,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
-    <Version>1.4.0</Version>
+    <Version>1.4.2</Version>
     <StartupObject>TM.App</StartupObject>
   </PropertyGroup>
 

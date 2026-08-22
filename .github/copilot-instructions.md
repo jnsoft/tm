@@ -6,6 +6,9 @@ You are an expert C# .NET 10+ and WPF architect specializing in MVVM, clean code
 - Prefer async/await over blocking calls.
 - Prefer C# pattern matching over traditional type checks, casting, and null checks (e.g., use `is`, `switch` expressions, and positional/property patterns instead of `if/else` chains with `as`/casts).
 
+## Security
+- `SecurityHelper.GetKeyFromPassword` is deterministic: repeated calls with identical password, salt, length, and iterations return the same key.
+
 ## Architecture
 - Follow MVVM pattern for all UI-related code.
 - Strictly separate UI (Views) from business logic (ViewModels/Models).

@@ -20,8 +20,11 @@ namespace TM.UITest;
 public class MainWindowAcceptanceTests
 {
     private const string Password = "acceptance-test-password";
-    private const string fileName = "acc-test-projects.xml";
+    private const string fileName = "projects.xml";
     private const string exeRelativePath = @"..\..\..\..\..\TM\bin\Debug\net10.0-windows\win-x64\TM.exe";
+    private const int SHORT_TIMEOUT = 100;
+    private const int MEDIUM_TIMEOUT = 250;
+    private const int LONG_TIMEOUT = 500;
 
     private static string applicationExecutablePath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,exeRelativePath));
         
@@ -58,14 +61,13 @@ public class MainWindowAcceptanceTests
             Assert.IsNotNull(mainWindow);
 
             CreateNewEncryptedCollection(mainWindow, application, automation);
-            System.Threading.Thread.Sleep(500);
+            System.Threading.Thread.Sleep(MEDIUM_TIMEOUT);
             AddProject(mainWindow, automation, "Acceptance Project");
-            System.Threading.Thread.Sleep(250);
+            System.Threading.Thread.Sleep(SHORT_TIMEOUT);
             AddTask(mainWindow, automation, "Acceptance Task 1", DateTime.Today.AddDays(7));
-            System.Threading.Thread.Sleep(250);
+            System.Threading.Thread.Sleep(SHORT_TIMEOUT);
             AddTask(mainWindow, automation, "Acceptance Task 2", DateTime.Today.AddDays(14));
-            System.Threading.Thread.Sleep(250);
-
+            System.Threading.Thread.Sleep(SHORT_TIMEOUT);
             Save(mainWindow, application, automation);
             mainWindow.Close();
 
@@ -89,10 +91,24 @@ public class MainWindowAcceptanceTests
             Assert.IsTrue(tasks.Any(task => task.Text == "Acceptance Task 1"));
             Assert.IsTrue(tasks.Any(task => task.Text == "Acceptance Task 2"));
             Assert.IsTrue(tasks.All(task => task.DueDate.HasValue));
+
         }
         finally
         {
-            application?.Dispose();
+            if (application != null)
+            {
+                // 1. Fetch the native OS process via FlaUI's process ID property
+                var nativeProcess = Process.GetProcessById(application.ProcessId);
+
+                application.Close();
+
+                // 2. Disconnect FlaUI 
+                application.Dispose();
+
+                // 3. Wait for the operating system to completely terminate it
+                // (Timeout of 2000ms ensures it won't hang if the app freezes)
+                nativeProcess?.WaitForExit(2000);
+            }
 
             if (Directory.Exists(workingDirectory))
                 Directory.Delete(workingDirectory, recursive: true);
@@ -121,11 +137,11 @@ public class MainWindowAcceptanceTests
     {
         AutomationElement tree = mainWindow.FindFirstDescendant(
             cf => cf.ByAutomationId("ProjectTree"));
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         tree.RightClick();
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         FindMenuItem(automation.GetDesktop(), "Add Project").Click();
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         SetName(mainWindow, projectName);
     }
 
@@ -137,12 +153,13 @@ public class MainWindowAcceptanceTests
     {
         AutomationElement projectText = mainWindow.FindFirstDescendant(
             cf => cf.ByText("Acceptance Project"));
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         projectText.RightClick();
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         FindMenuItem(automation.GetDesktop(), "Add Task").Click();
-
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         SetName(mainWindow, taskName);
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         SetDueDate(mainWindow, dueDate);
     }
 
@@ -178,12 +195,12 @@ public class MainWindowAcceptanceTests
         Application application,
         UIA3Automation automation)
     {
-        System.Threading.Thread.Sleep(250);
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S);
-
-        Window saveConfirmation = WaitForWindow(application, automation, "Save file");
-
-        FindMenuItem(saveConfirmation, "OK").Click();
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
+        Window saveConfirmation = WaitForModalWindow(application, automation, "Save file");
+        System.Threading.Thread.Sleep(SHORT_TIMEOUT);
+        FindButton(saveConfirmation, "OK").Click();
     }
 
     private static ProjectDocument LoadEncryptedDocument(
@@ -233,6 +250,36 @@ public class MainWindowAcceptanceTests
         return window!;
     }
 
+    private static Window WaitForModalWindow(
+        Application application,
+        UIA3Automation automation,
+        string title)
+    {
+        Window? window = null;
+
+        bool found = WaitUntil(() =>
+        {
+            // 1. Get your application's primary window first
+            var mainWindow = application.GetMainWindow(automation);
+            if (mainWindow == null) return false;
+
+            // 2. Search for the popup box directly inside that main window
+            var messageBoxElement = mainWindow.FindAllChildren(cf => cf.ByControlType(ControlType.Window))
+                .FirstOrDefault(candidate => candidate.Name != null && candidate.Name.Contains(title));
+
+            if (messageBoxElement != null)
+            {
+                window = messageBoxElement.AsWindow();
+                return true;
+            }
+
+            return false;
+        });
+
+        Assert.IsTrue(found, $"Window '{title}' was not shown.");
+        return window!;
+    }
+
     private static Window WaitForGlobalWindow(
         Application application,
         UIA3Automation automation,
@@ -242,6 +289,28 @@ public class MainWindowAcceptanceTests
 
         bool found = WaitUntil(() =>
         {
+
+            // Search absolutely all immediate elements on the desktop
+            var desktopChildren = automation.GetDesktop().FindAllChildren();
+
+            var openTitles = desktopChildren.Select(c => c.Name).ToList();
+
+            var targetElement = desktopChildren.FirstOrDefault(c =>
+                c.Name != null && c.Name.Contains(title));
+
+            window = targetElement?.AsWindow();
+            return window is not null;
+
+            
+
+            // Query by .Name explicitly
+            window = automation.GetDesktop()
+                .FindAllChildren(cf => cf.ByControlType(ControlType.Window))
+                .FirstOrDefault(candidate => candidate.Name != null && candidate.Name.Contains(title))?
+                .AsWindow();
+
+            return window is not null;
+
             // Search the global desktop instead of the application process
             window = automation.GetDesktop()
                 .FindAllChildren(cf => cf.ByControlType(ControlType.Window))
@@ -304,6 +373,21 @@ public class MainWindowAcceptanceTests
         return menuItem;
     }
 
+    private static Button FindButton(AutomationElement root, string name)
+    {
+        // Use ControlType.Button instead of MenuItem
+        AutomationElement? element = root.FindFirstDescendant(
+            cf => cf.ByControlType(ControlType.Button).And(cf.ByName(name)));
+
+        Assert.IsNotNull(element, $"Button '{name}' was not found.");
+
+        // Cast to FlaUI Button
+        Button? button = element.AsButton();
+        Assert.IsNotNull(button, $"Element '{name}' is not a button.");
+
+        return button;
+    }
+
     private static string GetApplicationExecutablePath()
     {
         
@@ -314,3 +398,4 @@ public class MainWindowAcceptanceTests
         return applicationExecutablePath();
     }
 }
+

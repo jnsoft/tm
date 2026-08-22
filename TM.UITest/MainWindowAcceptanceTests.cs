@@ -1,17 +1,18 @@
-﻿using FlaUI.Core.WindowsAPI;
-using FlaUI.Core;
+﻿using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Definitions;
+using FlaUI.Core.Input;
+using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Security;
 using System.Text;
+//using System.Windows.Automation;
 using System.Xml;
 using TM.Models;
 using TM.Services;
-using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Input;
-using FlaUI.Core.Definitions;
 
 namespace TM.UITest;
 
@@ -20,6 +21,11 @@ public class MainWindowAcceptanceTests
 {
     private const string Password = "acceptance-test-password";
     private const string fileName = "acc-test-projects.xml";
+    private const string exeRelativePath = @"..\..\..\..\..\TM\bin\Debug\net10.0-windows\win-x64\TM.exe";
+
+    private static string applicationExecutablePath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,exeRelativePath));
+        
+    
 
     [TestMethod]
     [Timeout(60000)]
@@ -30,7 +36,6 @@ public class MainWindowAcceptanceTests
             $"TM.UITest.{Guid.NewGuid():N}");
 
         Directory.CreateDirectory(workingDirectory);
-
         Application? application = null;
 
         try
@@ -53,10 +58,13 @@ public class MainWindowAcceptanceTests
             Assert.IsNotNull(mainWindow);
 
             CreateNewEncryptedCollection(mainWindow, application, automation);
-
+            System.Threading.Thread.Sleep(500);
             AddProject(mainWindow, automation, "Acceptance Project");
+            System.Threading.Thread.Sleep(250);
             AddTask(mainWindow, automation, "Acceptance Task 1", DateTime.Today.AddDays(7));
+            System.Threading.Thread.Sleep(250);
             AddTask(mainWindow, automation, "Acceptance Task 2", DateTime.Today.AddDays(14));
+            System.Threading.Thread.Sleep(250);
 
             Save(mainWindow, application, automation);
             mainWindow.Close();
@@ -170,6 +178,7 @@ public class MainWindowAcceptanceTests
         Application application,
         UIA3Automation automation)
     {
+        System.Threading.Thread.Sleep(250);
         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S);
 
         Window saveConfirmation = WaitForWindow(application, automation, "Save file");
@@ -224,6 +233,31 @@ public class MainWindowAcceptanceTests
         return window!;
     }
 
+    private static Window WaitForGlobalWindow(
+        Application application,
+        UIA3Automation automation,
+        string title)
+    {
+        Window? window = null;
+
+        bool found = WaitUntil(() =>
+        {
+            // Search the global desktop instead of the application process
+            window = automation.GetDesktop()
+                .FindAllChildren(cf => cf.ByControlType(ControlType.Window))
+                .FirstOrDefault(candidate => candidate.AsWindow().Title == title)?
+                .AsWindow();
+
+            return window is not null;
+        });
+
+        Assert.IsTrue(found, $"Window '{title}' was not shown.");
+        return window!;
+    }
+
+
+    
+
     private static AutomationElement FindDesktopElement(
         UIA3Automation automation,
         string text)
@@ -272,15 +306,11 @@ public class MainWindowAcceptanceTests
 
     private static string GetApplicationExecutablePath()
     {
-        string executablePath = Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                @"..\..\..\..\TM\bin\Debug\net10.0-windows\win-x64\TM.exe"));
-
+        
         Assert.IsTrue(
-            File.Exists(executablePath),
-            $"Build the TM project before running UI tests. Missing: {executablePath}");
+            File.Exists(applicationExecutablePath()),
+            $"Build the TM project before running UI tests. Missing: {applicationExecutablePath()}");
 
-        return executablePath;
+        return applicationExecutablePath();
     }
 }

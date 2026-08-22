@@ -10,7 +10,7 @@ namespace TM.UITest
         public void Application_StartsAndShowsMainWindow()
         {
             string executablePath = Path.GetFullPath(
-                @"..\..\..\..\TM\bin\Debug\net10.0-windows\TM.exe");
+                @"..\..\..\..\..\TM\bin\Debug\net10.0-windows\win-x64\TM.exe");
 
             using Application application = Application.Launch(executablePath);
             using UIA3Automation automation = new();

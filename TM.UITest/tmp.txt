@@ -1,0 +1,75 @@
+# Utvecklingsrutin – egen utveckling
+
+## 1. Syfte och omfattning
+
+Denna rutin beskriver hur egen utveckling av system, tjänster, dataflöden etc. tas fram och underhålls vid egen utveckling hos XXX.
+
+## 2. Grundläggande principer
+
+- **Kod är källa** – All kod och konfiguration hanteras i versionkontroll
+- **Automatisera allt** – Bygg, test, deploy i pipelines, inte lokala speciallösningar
+- **Kontinuerlig granskning** – PR mot skyddad gren eller stora förändringar kräver godkännande
+- **Små förändringar** – Underlätta granskning och parallell utveckling, t.ex .med kortlivade grenar
+- **Reversibilitet** – Varje release ska kunna återskapas
+- **Dokumentera** – Håll dokumentation nära koden, t.ex. i readme eller wikistruktur för projektet
+- **Säkerhet från början** – AAA (Authentication, Authorization, Auditing), beakta sekretess och tillämpa minst-privilegium
+
+## 3. Utvecklingscykeln
+
+Oavsett typ av utveckling följer arbetet samma grundflöde. Stegen är sekvensiella i logik men inte i tid och kan utföras parallellt.
+
+### 3.1 Planering
+
+- Vad som ska göras dokumenteras i Azure DevOps Boards eller motsvarande, inklusive dokumentation av val och krav.
+
+### 3.2 Design & arkitektur (vid behov)
+
+- Följ SAD-mallen där denna tillämpas
+- Dokumentation av val och krav
+
+### 3.3 Implementation
+
+- Lokal utveckling → PR → main/release
+- Kodstil och struktur bör följa språkstandard
+
+
+### 3.4 Kodgranskning
+
+- Minst en granskare (inte författare)
+- Specialiserad granskning vid säkerhetskrav
+- Verifiera logik, testning och dokumentation
+
+### 3.5 Testning
+
+- Testning och dokumentation av tester enligt överenskommen teststrategi för projektet
+- CI ska innehålla tester
+- Image-scan (vid containerbygge)
+
+### 3.6 Releas & deployment
+
+- Drivs av kod i versionkontroll
+- Staging -> Validering -> Produktion -> Validering
+- Använd semver (https://semver.org/spec/v2.0.0-rc.2.html) för namngivning / taggning av releases.
+
+### 3.7 Drift & förvaltning
+- **Observerbarhet:**
+  - Strukturerade loggar (JSON) med `service`, `version`, `correlation_id`.
+  - Tracing (OpenTelemetry) där det ger mervärde.
+
+- **Larm & incident:**
+  - Övervakning, larm & incidenthantering ska finnas för produktionssatta system
+
+
+## 4. Definition av "klart"
+
+En förändring anses **klar** när:
+- [ ] Kod, test, config och dokumentation finns i versionkontroll.
+- [ ] Godkänd kodgranskning
+- [ ] CI grön
+- [ ] Lanserad till staging
+
+## 5. Referrenser
+
+- SAD-mall ...
+- Rutin för säker utveckling ...
+- Rutin för testning ...

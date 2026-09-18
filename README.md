@@ -57,3 +57,40 @@ Add these GitHub repository secrets or variables:
           & "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" `
             verify /pa /v .\artifacts\publish\TM.exe
    ```
+
+## Local Signing
+```powershell
+$certificate = New-SelfSignedCertificate `
+  -Type CodeSigningCert `
+  -Subject "CN=TM Development Code Signing" `
+  -CertStoreLocation "Cert:\CurrentUser\My" `
+  -KeyAlgorithm RSA `
+  -KeyLength 3072 `
+  -HashAlgorithm SHA256 `
+  -NotAfter (Get-Date).AddYears(3)
+
+$certificatePath = Join-Path $env:TEMP "TM-Development-CodeSigning.cer"
+
+Export-Certificate `
+  -Cert $certificate `
+  -FilePath $certificatePath | Out-Null
+
+Import-Certificate `
+  -FilePath $certificatePath `
+  -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
+
+Import-Certificate `
+  -FilePath $certificatePath `
+  -CertStoreLocation "Cert:\CurrentUser\TrustedPublisher" | Out-Null
+
+$certificate.Thumbprint
+```
+
+```powershell
+& $signtool sign `
+  /fd SHA256 `
+  /sha1 "<certificate-thumbprint>" `
+  ".\artifacts\publish\TM.exe"
+
+& $signtool verify /pa /v ".\artifacts\publish\TM.exe"
+```

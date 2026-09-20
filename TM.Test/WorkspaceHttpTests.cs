@@ -144,6 +144,68 @@ public sealed class WorkspaceHttpTests
         Assert.AreEqual("keep-http-secret", RevealedSecret(browser.Html));
     }
 
+    [TestMethod]
+    public async Task ChangePassword_HttpValidationAndRoundTrip_DoNotEchoPasswordsAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.HttpRekey.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "rekey.xml") };
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs);
+            await browser.PostAsync("New", ("Password", "original-http-password"));
+            await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+            await browser.PostAsync("Add", ("NodeType", "Protected"), ("NodeId", browser.EditorId), ("Name", "Credential"));
+            string id = browser.EditorId;
+            await browser.PostAsync("Edit", ("NodeId", id), ("Name", "Credential"), ("ReplaceSecret", "true"), ("Secret", "preserved-http-secret"));
+            await browser.PostAsync("Save");
+            string revision = browser.Revision;
+            foreach ((string field, string value, string error) in new[]
+            {
+                ("Password", "wrong-http-password", "operation failed"),
+                ("NewPassword", "", "Enter a new document password"),
+                ("ConfirmNewPassword", "mismatch-http-password", "do not match"),
+                ("ConfirmPasswordChange", "false", "Acknowledge"),
+                ("Revision", "0", "document changed"),
+                ("NewPassword", new string('x', 4097), "Check the submitted")
+            })
+            {
+                await browser.PostAsync("ChangePassword", ("Password", "original-http-password"),
+                    ("NewPassword", "replacement-http-password"), ("ConfirmNewPassword", "replacement-http-password"),
+                    ("ConfirmPasswordChange", "true"), (field, value));
+                Assert.IsTrue(browser.Html.Contains(error, StringComparison.Ordinal));
+                Assert.AreEqual(revision, browser.Revision);
+                AssertPasswordsAbsent(browser.Html);
+            }
+            await browser.PostAsync("Reveal", ("NodeId", id));
+            Assert.AreEqual("preserved-http-secret", RevealedSecret(browser.Html));
+            await browser.PostAsync("ChangePassword", ("Password", "original-http-password"),
+                ("NewPassword", "replacement-http-password"), ("ConfirmNewPassword", "replacement-http-password"),
+                ("ConfirmPasswordChange", "true"));
+            Assert.IsTrue(browser.Html.Contains("unsaved changes", StringComparison.Ordinal));
+            Assert.AreEqual(id, browser.EditorId);
+            AssertPasswordsAbsent(browser.Html);
+            AssertPasswordsAbsent(await browser.Client.GetStringAsync("/"));
+            await browser.PostAsync("Save");
+            await browser.PostAsync("Lock");
+            Assert.IsFalse(browser.Html.Contains("Change document password", StringComparison.Ordinal));
+            await browser.PostAsync("Unlock", ("Password", "original-http-password"));
+            Assert.IsTrue(browser.Html.Contains("Locked", StringComparison.Ordinal));
+            AssertPasswordsAbsent(browser.Html);
+            await browser.PostAsync("Unlock", ("Password", "replacement-http-password"));
+            await browser.PostAsync("Reveal", ("NodeId", id));
+            Assert.AreEqual("preserved-http-secret", RevealedSecret(browser.Html));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+
+        static void AssertPasswordsAbsent(string html)
+        {
+            foreach (string secret in new[] { "original-http-password", "replacement-http-password", "wrong-http-password", "mismatch-http-password", "preserved-http-secret" })
+                Assert.IsFalse(html.Contains(secret, StringComparison.Ordinal));
+            Assert.IsFalse(html.Contains("data-secret", StringComparison.Ordinal));
+        }
+    }
+
     private static string RevealedSecret(string html)
     {
         Match match = Regex.Match(html, "<output data-secret>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));

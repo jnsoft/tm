@@ -33,6 +33,8 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
         command.Login ??= "";
         command.Url ??= "";
         command.Password ??= "";
+        command.NewPassword ??= "";
+        command.ConfirmNewPassword ??= "";
         command.Secret ??= "";
         command.Filter ??= "";
         Validator.ValidateObject(command, new ValidationContext(command), validateAllProperties: true);
@@ -120,6 +122,20 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                     break;
                 case WorkspaceAction.GeneratePassword:
                     GeneratePassword(command);
+                    dirty = true;
+                    break;
+                case WorkspaceAction.ChangePassword:
+                    RequireDocument();
+                    RequirePassword(command.Password);
+                    if (string.IsNullOrEmpty(command.NewPassword))
+                        throw new InvalidOperationException("Enter a new document password.");
+                    if (!string.Equals(command.NewPassword, command.ConfirmNewPassword, StringComparison.Ordinal))
+                        throw new InvalidOperationException("The new passwords do not match.");
+                    if (!command.ConfirmPasswordChange)
+                        throw new InvalidOperationException("Acknowledge the password-change warning first.");
+                    using (SecureString oldPassword = SecurePassword(command.Password))
+                    using (SecureString newPassword = SecurePassword(command.NewPassword))
+                        crypto.ChangeMasterPassword(RequireDocument(), oldPassword, newPassword);
                     dirty = true;
                     break;
                 default: throw new InvalidOperationException("Unsupported operation.");

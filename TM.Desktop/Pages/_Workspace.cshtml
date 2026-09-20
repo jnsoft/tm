@@ -27,6 +27,20 @@
     </form>
     @if (Model.IsLoaded)
     {
+        <details>
+            <summary>Change document password</summary>
+            <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                <label>Current document password <input type="password" name="Input.Password" required maxlength="4096" autocomplete="off" /></label>
+                <label>New document password <input type="password" name="Input.NewPassword" required maxlength="4096" autocomplete="off" /></label>
+                <label>Confirm new document password <input type="password" name="Input.ConfirmNewPassword" required maxlength="4096" autocomplete="off" /></label>
+                <p>Save after changing the password. Until saved, the file still uses its previous password; discarding changes restores that saved version.</p>
+                <p>This also changes document-derived encryption and HMAC keys. External files are not updated. Retain a secure copy of the old document and its password if needed to decrypt or verify those files.</p>
+                <label><input type="checkbox" name="Input.ConfirmPasswordChange" value="true" required /> I understand the password and external-file key change</label>
+                <button name="Input.Action" value="ChangePassword">Change password</button>
+            </form>
+        </details>
         <div class="workspace-grid">
             <nav aria-label="Projects and tasks">
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">

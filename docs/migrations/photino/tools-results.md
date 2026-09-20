@@ -23,5 +23,25 @@
 - This is a tested tools slice, not completion of task 05 or UI parity. Password change, clipboard expiry, file/security utilities and legacy transfer workflows remain pending.
 - Task 04 gaps remain listed in ui-results.md. Keep WPF runnable; no stable tag, release cutover, Linux/macOS acceptance or automatic push.
 
-### Next slice
-Document password change: investigate empty/no-protected-item documents, authenticate the old password independently of protected entries, and ensure failure leaves the active document untouched before exposing it through the workspace UI.
+### Follow-up
+Document password change is now implemented in the following slice; remaining tools are still pending.
+
+## Document password changes
+
+### Delivered
+- Separate current/new/confirmation password form with explicit acknowledgement, bounded inputs and no echoed passwords. Saving remains explicit; discarding restores the previous saved password and contents.
+- Fixed-time comparison of the supplied old-password key against the DPAPI-unprotected active key, including empty and no-protected-item documents.
+- Re-encrypted detached entities, replacement node construction and new DPAPI key protection complete before live state is changed. Wrong passwords and damaged entries leave the active key/salt/nodes untouched. Temporary plaintext bytes and derived keys are cleared in finally blocks.
+- Preserves ECDH/certificate state and frozen document compatibility. The UI warns that document-derived external-file/HMAC keys change, external files are not updated, and an old document/password copy may be needed.
+- Loading requires a decrypted projects element with no remaining XML encrypted payload; missing/unsuccessful payload decryption cannot be silently treated as an empty collection. This adds validation, not a new file format or authenticated-encryption scheme for the legacy CBC document envelope.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, not a clean rebuild. Edited source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **99 passed, 0 failed, 0 skipped**, including frozen WPF key/certificate and document-format tests.
+- Eight added cases cover empty/no-protected documents, authentication, damaged-later-entry failure without partial rekey, missing payload rejection, empty/populated save/reopen and discard, service guards and HTTP validation/non-disclosure.
+- Initial validation found an old-password acceptance on empty-document reopening; added post-decryption structural validation and deterministic missing-payload coverage. The damaged-entry test was corrected to account for sorted node order. An existing WPF UI test hit a process-exit cleanup race on the first run and passed on the final full rerun; no native-test production change was made.
+
+### Outstanding and next slice
+- Manually exercise the password-change form in the native WebView, including unapplied-edit confirmation, keyboard/focus, save/discard and error UX. Current native smoke covers startup/basic editing, not these controls.
+- Continue with ownership-aware clipboard expiry and native integration. File utilities, hashes/HMAC, signatures/certificates and legacy transfer workflows remain pending.
+- Tasks 04/05 remain incomplete. WPF, Windows DPAPI and jnUtil remain; no stable tag, push, cutover or cross-platform acceptance.

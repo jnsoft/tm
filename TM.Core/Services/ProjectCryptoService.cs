@@ -113,18 +113,25 @@ public sealed class ProjectCryptoService
 
     public bool ChangeMasterPassword(ProjectDocument document, SecureString oldPassword, SecureString newPassword)
     {
-        byte[] newSalt = SecurityHelper.GetRandomKey(SaltLength);
-        byte[]? newKey = SecurityHelper.GetKeyFromPassword(newPassword, newSalt, 32, Pbkdf2Iterations);
-        byte[]? oldKey = SecurityHelper.GetKeyFromPassword(oldPassword, document.Security.Salt, 32, Pbkdf2Iterations);
-
+        byte[]? newKey = null;
+        byte[]? oldKey = null;
+        byte[]? activeKey = null;
         try
         {
-            List<Project> projects = document.GetProjects();
-            if (projects.Count == 0)
-                return false;
+            if (document.IsLocked || document.Security.ProtectedMasterKey is null)
+                throw new InvalidOperationException("Open or unlock a document first.");
+            if (newPassword.Length == 0)
+                throw new ArgumentException("Enter a new document password.", nameof(newPassword));
 
-            if (projects.SelectMany(project => project.AllProtectedItems()).Any() is false)
-                return false;
+            oldKey = SecurityHelper.GetKeyFromPassword(oldPassword, document.Security.Salt, SaltLength, Pbkdf2Iterations);
+            activeKey = ProtectedData.Unprotect(document.Security.ProtectedMasterKey,
+                document.Security.Entropy, DataProtectionScope.CurrentUser);
+            if (!CryptographicOperations.FixedTimeEquals(oldKey, activeKey))
+                throw new CryptographicException("The current document password is incorrect.");
+
+            byte[] newSalt = SecurityHelper.GetRandomKey(SaltLength);
+            newKey = SecurityHelper.GetKeyFromPassword(newPassword, newSalt, SaltLength, Pbkdf2Iterations);
+            List<Project> projects = document.GetProjects();
 
             foreach (Project project in projects)
             {
@@ -132,8 +139,16 @@ public sealed class ProjectCryptoService
                     item.Password = ReencryptSecret(item.Password, oldKey, newKey);
             }
 
-            SetMasterKey(document, newSalt, newKey);
-            document.LoadProjects(projects);
+            // Complete all crypto and node construction before changing the active document.
+            ProjectDocument staged = new();
+            staged.LoadProjects(projects);
+            byte[] entropy = SecurityHelper.GetRandomKey(SaltLength);
+            byte[] protectedKey = ProtectedData.Protect(newKey, entropy, DataProtectionScope.CurrentUser);
+            ClearMasterKey(document);
+            document.Security.Salt = newSalt;
+            document.Security.Entropy = entropy;
+            document.Security.ProtectedMasterKey = protectedKey;
+            document.Nodes = staged.Nodes;
             return true;
         }
         finally
@@ -142,6 +157,7 @@ public sealed class ProjectCryptoService
             newPassword.Dispose();
             ClearArray(ref oldKey);
             ClearArray(ref newKey);
+            ClearArray(ref activeKey);
         }
     }
 
@@ -201,20 +217,29 @@ public sealed class ProjectCryptoService
         byte[] salt = ArrayHelper.Extract(input, SaltLength, ref pos);
         byte[] ciphertext = ArrayHelper.Extract(input, input.Length - salt.Length, ref pos);
 
-        byte[]? key = DeriveKey(oldKey, "protected item", salt);
-        string plain = SecurityHelper.GCMDecrypt(ciphertext, key).ToStringFromByte();
-        ClearArray(ref key);
+        byte[]? key = null;
+        byte[]? plain = null;
+        try
+        {
+            key = DeriveKey(oldKey, "protected item", salt);
+            plain = SecurityHelper.GCMDecrypt(ciphertext, key);
+            ClearArray(ref key);
 
-        salt = SecurityHelper.GetRandomKey(SaltLength);
-        key = DeriveKey(newKey, "protected item", salt);
-        byte[] encryptedValue = SecurityHelper.GCMEncrypt(plain.ToByte(), key);
-        ClearArray(ref key);
+            salt = SecurityHelper.GetRandomKey(SaltLength);
+            key = DeriveKey(newKey, "protected item", salt);
+            byte[] encryptedValue = SecurityHelper.GCMEncrypt(plain, key);
 
-        byte[] result = new byte[salt.Length + encryptedValue.Length];
-        int outputOffset = 0;
-        ArrayHelper.Append(result, salt, ref outputOffset);
-        ArrayHelper.Append(result, encryptedValue, ref outputOffset);
-        return result.ToBase64();
+            byte[] result = new byte[salt.Length + encryptedValue.Length];
+            int outputOffset = 0;
+            ArrayHelper.Append(result, salt, ref outputOffset);
+            ArrayHelper.Append(result, encryptedValue, ref outputOffset);
+            return result.ToBase64();
+        }
+        finally
+        {
+            ClearArray(ref key);
+            ClearArray(ref plain);
+        }
     }
 
     private void ClearMasterKey(ProjectDocument document)
@@ -403,6 +428,11 @@ public sealed class ProjectCryptoService
             doc,
             DeriveKey(document, "projects", innerSalt).ToBase64().ToSecureString(),
             pepper);
+
+        // A failed/empty legacy decrypt must not be mistaken for an empty collection.
+        if (root.SelectSingleNode("projects") is not XmlElement ||
+            doc.GetElementsByTagName("EncryptedData", "http://www.w3.org/2001/04/xmlenc#").Count != 0)
+            throw new CryptographicException("The project payload could not be decrypted.");
 
         List<XmlNode> projects = root.ChildNodes.FindAllNodesByName("project", true, true);
         document.LoadProjects(Project.FromXml(projects));

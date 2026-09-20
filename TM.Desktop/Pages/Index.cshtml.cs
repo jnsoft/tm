@@ -41,6 +41,8 @@ public sealed class IndexModel(ShellViewModel viewModel, WorkspaceService worksp
         finally
         {
             Input.Password = "";
+            Input.NewPassword = "";
+            Input.ConfirmNewPassword = "";
             Input.Secret = "";
             ModelState.Clear();
         }

@@ -296,6 +296,99 @@ public sealed class WorkspaceServiceTests
         Assert.AreEqual("keep-this-secret", (await SendAsync(WorkspaceAction.Reveal, command => command.NodeId = id)).RevealedPassword);
     }
 
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ChangePassword_SaveReopenAndDiscard_PreserveDocumentAsync(bool withSecret)
+    {
+        await NewAsync();
+        string? id = null;
+        if (withSecret)
+        {
+            WorkspaceViewModel root = await AddAsync(ProjectItemType.Project, "Root");
+            id = (await AddAsync(ProjectItemType.Protected, "Credential", root.Editor!.Id)).Editor!.Id;
+            await SendAsync(WorkspaceAction.Edit, command =>
+            {
+                command.NodeId = id; command.Name = "Credential";
+                command.ReplaceSecret = true; command.Secret = "preserved-secret";
+            });
+        }
+        dialogs.SavePath = Path.Combine(directory, "rekey.xml");
+        WorkspaceViewModel before = await SendAsync(WorkspaceAction.Save);
+        string originalFile = await File.ReadAllTextAsync(dialogs.SavePath);
+        void Change(WorkspaceCommand command)
+        {
+            command.Password = "test-only-password";
+            command.NewPassword = command.ConfirmNewPassword = "replacement-password";
+            command.ConfirmPasswordChange = true;
+        }
+        WorkspaceViewModel changed = await SendAsync(WorkspaceAction.ChangePassword, Change);
+        Assert.IsTrue(changed.IsDirty);
+        Assert.AreEqual(before.Revision + 1, changed.Revision);
+        Assert.AreEqual(before.Editor, changed.Editor);
+        Assert.IsNull(changed.RevealedPassword);
+        Assert.AreEqual(originalFile, await File.ReadAllTextAsync(dialogs.SavePath));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Lock));
+        await SendAsync(WorkspaceAction.Lock, command => command.ConfirmDiscard = true);
+        await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+        await SendAsync(WorkspaceAction.ChangePassword, Change);
+        await SendAsync(WorkspaceAction.Save);
+        await SendAsync(WorkspaceAction.Lock);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ChangePassword, Change));
+        try
+        {
+            await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+            Assert.Fail("Old password was accepted.");
+        }
+        catch (Exception error) when (error is System.Security.Cryptography.CryptographicException or XmlException) { }
+        Assert.IsTrue((await workspace.SnapshotAsync()).IsLocked);
+        await SendAsync(WorkspaceAction.Unlock, command => command.Password = "replacement-password");
+        if (withSecret)
+            Assert.AreEqual("preserved-secret", (await SendAsync(WorkspaceAction.Reveal, command => command.NodeId = id)).RevealedPassword);
+    }
+
+    [TestMethod]
+    public async Task ChangePassword_InvalidRequests_DoNotDirtyOrMutateDocumentAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ChangePassword));
+        await NewAsync();
+        dialogs.SavePath = Path.Combine(directory, "unchanged-password.xml");
+        WorkspaceViewModel before = await SendAsync(WorkspaceAction.Save);
+        WorkspaceCommand Request() => new()
+        {
+            Action = WorkspaceAction.ChangePassword, Revision = before.Revision,
+            Password = "test-only-password", NewPassword = "new-password",
+            ConfirmNewPassword = "new-password", ConfirmPasswordChange = true
+        };
+        foreach (Action<WorkspaceCommand> invalidate in new Action<WorkspaceCommand>[]
+        {
+            command => command.Password = "",
+            command => command.NewPassword = "",
+            command => command.ConfirmNewPassword = "mismatch",
+            command => command.ConfirmPasswordChange = false,
+            command => command.Revision--
+        })
+        {
+            WorkspaceCommand invalid = Request();
+            invalidate(invalid);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(invalid));
+        }
+        WorkspaceCommand wrong = Request();
+        wrong.Password = "wrong-password";
+        await Assert.ThrowsAsync<System.Security.Cryptography.CryptographicException>(() => workspace.ExecuteAsync(wrong));
+        WorkspaceCommand oversized = Request();
+        oversized.NewPassword = new string('x', 4097);
+        await Assert.ThrowsAsync<ValidationException>(() => workspace.ExecuteAsync(oversized));
+        using CancellationTokenSource canceled = new();
+        canceled.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(() => workspace.ExecuteAsync(Request(), canceled.Token));
+        WorkspaceViewModel after = await workspace.SnapshotAsync();
+        Assert.AreEqual(before.Revision, after.Revision);
+        Assert.IsFalse(after.IsDirty);
+        await SendAsync(WorkspaceAction.Lock);
+        await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+    }
+
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");
     private Task<WorkspaceViewModel> AddAsync(ProjectItemType type, string name, string? parent = null) =>
         SendAsync(WorkspaceAction.Add, command => { command.NodeType = type; command.Name = name; command.NodeId = parent; });

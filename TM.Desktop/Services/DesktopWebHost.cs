@@ -18,7 +18,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
         Security = security;
     }
 
-    public static async Task<DesktopWebHost> StartAsync(string contentRoot, CancellationToken cancellationToken = default)
+    public static async Task<DesktopWebHost> StartAsync(string contentRoot, CancellationToken cancellationToken = default,
+        IProjectFileDialogs? dialogs = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -34,7 +35,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
             options.Limits.MaxRequestBodySize = 1024 * 1024;
             options.AddServerHeader = false;
         });
-        builder.Services.AddRazorPages();
+        builder.Services.AddRazorPages().AddMvcOptions(options =>
+            options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
         builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
         builder.Services.AddAntiforgery(options =>
         {
@@ -46,6 +48,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<ProjectCryptoService>();
         builder.Services.AddSingleton<ProjectStore>();
         builder.Services.AddSingleton<ShellViewModel>();
+        builder.Services.AddSingleton<IProjectFileDialogs>(dialogs ?? new PhotinoProjectFileDialogs());
+        builder.Services.AddSingleton<WorkspaceService>();
         WebApplication app = builder.Build();
         DesktopSessionSecurity security = app.Services.GetRequiredService<DesktopSessionSecurity>();
         app.Use((context, next) => security.InvokeAsync(context, next));

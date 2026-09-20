@@ -2,7 +2,7 @@
 
 ## Overview
 
-Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Continue between tested checkpoint branches; manual stable tags and Linux/macOS validation remain deferred.
+Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. The initial UI checkpoint builds and passes 81 tests; remaining UI parity and acceptance checks are recorded in [ui-results.md](ui-results.md). Continue between tested checkpoint branches; manual stable tags and Linux/macOS validation remain deferred.
 
 **Progress**: 3/6 tasks complete <progress value="50" max="100"></progress> 50%
 

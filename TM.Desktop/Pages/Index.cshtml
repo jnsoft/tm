@@ -9,15 +9,21 @@
     <title>@Model.ViewModel.Title</title>
     <link rel="stylesheet" href="/css/app.css" />
     <script src="/vendor/htmx.min.js" defer></script>
+    <script src="/js/app.js" defer></script>
 </head>
-<body>
+<body hx-sync="body:queue all">
     <main>
         <h1>@Model.ViewModel.Title</h1>
-        <p>Photino + Razor + htmx. No remote server or JavaScript framework.</p>
+        @if (Model.Workspace is { } workspace)
+        {
+            <partial name="_Workspace" model="workspace" />
+        }
+        <details open><summary>Desktop diagnostics</summary>
         <section id="status" aria-live="polite"><partial name="_Status" model="Model.ViewModel" /></section>
         <form method="post" asp-page-handler="Check" hx-post="/?handler=Check" hx-target="#status">
             <button type="submit">Check local session</button>
         </form>
+        </details>
         <p>The WPF application remains available while the replacement is developed.</p>
     </main>
 </body>

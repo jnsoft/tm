@@ -1,0 +1,121 @@
+@using TM.Desktop.ViewModels
+@using TM.Entities
+@model WorkspaceViewModel
+<section id="workspace" hx-target="#workspace" hx-swap="outerHTML" data-dirty="@Model.IsDirty.ToString().ToLowerInvariant()">
+    <header class="workspace-header">
+        <h2>@Model.FileName @(Model.IsDirty ? "— unsaved changes" : "")</h2>
+        <p>@(Model.IsLocked ? "Locked — reopen with your password." : Model.IsLoaded ? "Document unlocked" : "Create or open a document.")</p>
+    </header>
+    @if (Model.Message is { } message) { <p class="notice" role="alert">@message</p> }
+    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+        <label>Document password <input type="password" name="Input.Password" maxlength="4096" autocomplete="off" /></label>
+        <button name="Input.Action" value="New">New collection</button>
+        <button name="Input.Action" value="Open">Open file…</button>
+        @if (Model.IsLocked) { <button name="Input.Action" value="Unlock">Unlock</button> }
+        @if (Model.IsLoaded)
+        {
+            <button name="Input.Action" value="Save" data-command="save">Save</button>
+            <button name="Input.Action" value="SaveAs">Save as…</button>
+            <button name="Input.Action" value="Lock" data-command="lock">Lock</button>
+        }
+        @if (Model.IsDirty)
+        {
+            <label><input type="checkbox" name="Input.ConfirmDiscard" value="true" /> Allow discarding unsaved changes when replacing or locking</label>
+        }
+    </form>
+    @if (Model.IsLoaded)
+    {
+        <div class="workspace-grid">
+            <nav aria-label="Projects and tasks">
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <label>Search <input name="Input.Filter" value="@Model.Filter" maxlength="256" /></label>
+                    <button name="Input.Action" value="Filter">Search</button>
+                </form>
+                <ul class="tree">
+                    @foreach (TreeItemViewModel node in Model.Tree)
+                    {
+                        <partial name="_Tree" model="new TreeBranchViewModel(node, Model.Revision)" />
+                    }
+                </ul>
+                <details><summary>To-do list (@Model.Todos.Count)</summary>
+                    @foreach (TodoViewModel todo in Model.Todos)
+                    {
+                        <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                            <input type="hidden" name="Input.NodeId" value="@todo.Id" />
+                            <button name="Input.Action" value="Select">@todo.Title — @todo.DueDate?.ToString("yyyy-MM-dd")</button>
+                        </form>
+                    }
+                </details>
+            </nav>
+            <div>
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <input type="hidden" name="Input.NodeId" value="@Model.Editor?.Id" />
+                    <input type="hidden" name="Input.Action" value="Add" />
+                    <label>New item name <input name="Input.Name" required maxlength="256" /></label>
+                    <label>Type <select name="Input.NodeType">
+                        <option value="Project">Project (root)</option>
+                        @if (Model.Editor is { } parent)
+                        {
+                            @if (parent.Type is ProjectItemType.Project) { <option value="Milestone">Milestone</option> }
+                            @if (parent.Type is ProjectItemType.Project or ProjectItemType.Milestone) { <option value="Task">Task</option> }
+                            @if (parent.Type is ProjectItemType.Task or ProjectItemType.Subtask) { <option value="Subtask">Subtask</option> }
+                            <option value="Protected">Protected item</option>
+                        }
+                    </select></label>
+                    <button>Add item</button>
+                </form>
+                @if (Model.Editor is { } editor)
+                {
+                    <h3>@editor.Type: @editor.Name</h3>
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="editor" data-editor>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                        <label>Name <input name="Input.Name" value="@editor.Name" required maxlength="256" /></label>
+                        <label>Description <textarea name="Input.Description" rows="8" maxlength="32000">@editor.Description</textarea></label>
+                        @if (editor.Type is ProjectItemType.Protected)
+                        {
+                            <label>Login <input name="Input.Login" value="@editor.Login" maxlength="2048" autocomplete="off" /></label>
+                            <label>URL <input name="Input.Url" value="@editor.Url" maxlength="2048" /></label>
+                            <label><input name="Input.ReplaceSecret" type="checkbox" value="true" /> Replace protected password</label>
+                            <label>New protected password <input type="password" name="Input.Secret" maxlength="4096" autocomplete="off" /></label>
+                        }
+                        else
+                        {
+                            <label>Priority <select name="Input.Priority">
+                                @foreach (Priority priority in Enum.GetValues<Priority>()) { <option value="@priority" selected="@(priority == editor.Priority)">@priority</option> }
+                            </select></label>
+                            <label>Difficulty <select name="Input.Difficulty">
+                                @foreach (Difficulty difficulty in Enum.GetValues<Difficulty>()) { <option value="@difficulty" selected="@(difficulty == editor.Difficulty)">@difficulty</option> }
+                            </select></label>
+                            <label>Due date <input type="date" name="Input.DueDate" value="@editor.DueDate?.ToString("yyyy-MM-dd")" /></label>
+                            <label>Progress <input type="number" name="Input.Progress" min="0" max="100" value="@editor.Progress" readonly="@(!editor.IsLeaf)" /></label>
+                        }
+                        <p>Apply edits before selecting another item or saving the file.</p>
+                        <button name="Input.Action" value="Edit">Apply edits</button>
+                    </form>
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                        @if (editor.Type is ProjectItemType.Protected) { <button name="Input.Action" value="Reveal">Reveal password for 20 seconds</button> }
+                        <label><input type="checkbox" name="Input.ConfirmDelete" value="true" /> Confirm deletion including children</label>
+                        <button name="Input.Action" value="Delete">Delete item</button>
+                    </form>
+                    @if (Model.RevealedPassword is { } secret)
+                    {
+                        <p>Protected password: <output data-secret>@secret</output></p>
+                    }
+                }
+            </div>
+        </div>
+    }
+</section>

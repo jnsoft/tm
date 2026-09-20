@@ -5,3 +5,19 @@ button, input, select, textarea { font: inherit; }
 button { padding: .5rem .85rem; cursor: pointer; }
 :focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
 form { margin-block: 1rem; }
+.workspace-grid { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(24rem, 2fr); gap: 1.5rem; }
+.workspace-grid > * { min-width: 0; }
+.toolbar { display: flex; gap: .5rem; align-items: end; flex-wrap: wrap; }
+.editor { display: grid; gap: .8rem; }
+label { display: flex; flex-direction: column; gap: .3rem; }
+label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
+input, textarea, select { padding: .4rem; max-width: 100%; box-sizing: border-box; }
+.tree, .tree ul { list-style: none; padding-inline-start: 1rem; }
+.tree { padding-inline-start: 0; }
+.tree form { margin-block: .2rem; }
+.tree button { text-align: start; overflow-wrap: anywhere; width: 100%; }
+[aria-current="true"] { border: 2px solid Highlight; font-weight: bold; }
+.notice { padding: .7rem; border: 2px solid Highlight; }
+details { margin-block: .5rem; }
+[data-secret] { font-family: monospace; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .workspace-grid { grid-template-columns: 1fr; } }

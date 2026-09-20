@@ -1,0 +1,21 @@
+@using TM.Desktop.ViewModels
+@model TreeBranchViewModel
+<li>
+    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+        <input type="hidden" name="Input.NodeId" value="@Model.Node.Id" />
+        <button name="Input.Action" value="Select" aria-current="@(Model.Node.Selected ? "true" : null)">@Model.Node.Type: @Model.Node.Text</button>
+    </form>
+    @if (Model.Node.Children.Count > 0)
+    {
+        <details open><summary>Children (@Model.Node.Children.Count)</summary>
+            <ul>
+                @foreach (TreeItemViewModel child in Model.Node.Children)
+                {
+                    <partial name="_Tree" model="new TreeBranchViewModel(child, Model.Revision)" />
+                }
+            </ul>
+        </details>
+    }
+</li>

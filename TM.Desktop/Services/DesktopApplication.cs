@@ -6,7 +6,8 @@ public static class DesktopApplication
 {
     public static async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        await using DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, cancellationToken);
+        PhotinoProjectFileDialogs dialogs = new();
+        await using DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, cancellationToken, dialogs);
         string profile = Path.Combine(Path.GetTempPath(), "TM.Photino", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(profile);
         TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -31,6 +32,7 @@ public static class DesktopApplication
                     .SetWebSecurityEnabled(true)
                     .SetIgnoreCertificateErrorsEnabled(false)
                     .Load(host.Security.BootstrapUri);
+                dialogs.Attach(window);
                 window.WaitForClose();
                 completion.TrySetResult();
             }

@@ -188,11 +188,11 @@ public class NodeModel : ObservableObject
         set => SetProperty(ref isSelected, value);
     }
 
-    private Visibility visibility;
-    public Visibility Visibility
+    private bool isVisible = true;
+    public bool IsVisible
     {
-        get => visibility;
-        set => SetProperty(ref visibility, value);
+        get => isVisible;
+        set => SetProperty(ref isVisible, value);
     }
 
     private bool isFound;
@@ -254,10 +254,6 @@ public class NodeModel : ObservableObject
     public bool IsProjectItem => !IsProtected;
 
     public bool CanEditDifficulty => NodeType != ProjectItemType.Project && !IsProtected;
-
-    public Visibility IsProjectVisible => IsProjectItem ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility IsProtectedVisible => IsProtected ? Visibility.Visible : Visibility.Collapsed;
 
     public string DotColor => getColor.ToString();
 
@@ -376,7 +372,7 @@ public class NodeModel : ObservableObject
         this.progress = progress;
         this.isExpanded = isExpanded;
         this.isSelected = isSelected;
-        visibility = Visibility.Visible;
+        isVisible = true;
     }
 
     private void CompleteConstruction(IEnumerable<NodeModel> childNodes)
@@ -703,7 +699,7 @@ public class NodeModel : ObservableObject
         }
     }
 
-    private bool IsVisible(string filter) => 
+    private bool MatchesFilter(string filter) =>
         Text.ToUpper().Contains(filter) || 
         Description.ToUpper().Contains(filter);
 
@@ -718,16 +714,16 @@ public class NodeModel : ObservableObject
                 isV = true;
         }
 
-        if (IsVisible(filter) || isV)
+        if (MatchesFilter(filter) || isV)
         {
-            this.Visibility = Visibility.Visible;
-            this.IsFound = IsVisible(filter);
+            IsVisible = true;
+            this.IsFound = MatchesFilter(filter);
             ExpandParents();
             return true;
         }
         else
         {
-            this.Visibility = Visibility.Collapsed;
+            IsVisible = false;
             this.IsFound = false;
             return false;
         }
@@ -739,7 +735,7 @@ public class NodeModel : ObservableObject
         foreach (NodeModel n in Nodes)
             n.Visualize();
 
-        this.Visibility = Visibility.Visible;
+        IsVisible = true;
         this.IsFound = false;
     }
 

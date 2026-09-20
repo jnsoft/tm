@@ -28,4 +28,8 @@
     <Resource Include="tasks.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TM.Core\TM.Core.csproj" />
+  </ItemGroup>
+
 </Project>

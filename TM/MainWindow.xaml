@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TM"
-        xmlns:domain="clr-namespace:TM.Entities"
+        xmlns:domain="clr-namespace:TM.Entities;assembly=TM.Core"
         xmlns:models="clr-namespace:TM.Models"
         xmlns:helpers="clr-namespace:TM.Helpers"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
@@ -149,7 +149,7 @@
             <EventSetter Event="TreeViewItem.Selected" Handler="TreeViewItemSelected"/>
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-            <Setter Property="Visibility" Value="{Binding Visibility, Mode=OneWay}" />
+            <Setter Property="Visibility" Value="{Binding IsVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
             <Setter Property="FontWeight" Value="Normal" />
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
@@ -374,7 +374,7 @@
                 </DockPanel.Style>
                 <Label Name="lblId" DockPanel.Dock="Top" Visibility="Collapsed" Content="{Binding Id}"/>
                 <!-- size and priority combos-->
-                <Grid DockPanel.Dock="Top" Visibility="{Binding IsProjectVisible}">
+                <Grid DockPanel.Dock="Top" Visibility="{Binding IsProjectItem, Converter={StaticResource BoolToVis}}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -395,7 +395,7 @@
                 </DockPanel >
 
                 <!-- protected fields -->
-                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="2,8,2,0" Visibility="{Binding IsProtectedVisible}" >
+                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="2,8,2,0" Visibility="{Binding IsProtected, Converter={StaticResource BoolToVis}}" >
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="2,8,2,0" >
                         <Label DockPanel.Dock="Left"  VerticalAlignment="Center" Content="Url    " />
                         <Button x:Name="btCopyUrl"
@@ -503,7 +503,7 @@
                 </Grid>
 
                 <!-- progess bar-->
-                <DockPanel DockPanel.Dock="Bottom" Margin="2,0,2,2" Visibility="{Binding IsProjectVisible}">
+                <DockPanel DockPanel.Dock="Bottom" Margin="2,0,2,2" Visibility="{Binding IsProjectItem, Converter={StaticResource BoolToVis}}">
                     <Label DockPanel.Dock="Right" Content="%" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" Padding="1"/>
                     <Label DockPanel.Dock="Right" Content="{Binding ElementName=Progress, Path=Value, UpdateSourceTrigger=PropertyChanged}" Width="25" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Right" Padding="1"/>
                     <Label DockPanel.Dock="Left" Content="Progress" VerticalContentAlignment="Center" VerticalAlignment="Center"/>
@@ -511,7 +511,7 @@
                 </DockPanel>
 
                 <!-- date picker-->
-                <DockPanel DockPanel.Dock="Bottom" Margin="2,8,2,8" Visibility="{Binding IsProjectVisible}">
+                <DockPanel DockPanel.Dock="Bottom" Margin="2,8,2,8" Visibility="{Binding IsProjectItem, Converter={StaticResource BoolToVis}}">
                     <Label Content="Due date" VerticalContentAlignment="Center"/>
                     <DatePicker Name="dpDueDate" 
                                 VerticalContentAlignment="Center" 

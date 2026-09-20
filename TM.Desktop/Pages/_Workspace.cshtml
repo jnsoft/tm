@@ -42,6 +42,24 @@
             </form>
         </details>
             <details>
+                <summary>CMS file signing</summary>
+                <p>Generate a document signing certificate, save, then create a detached `.p7c` CMS signature. The source file is retained and existing signature outputs are refused.</p>
+                <p>A valid CMS signature does not by itself prove a trusted identity. Verification reports system chain trust separately; revocation and timestamping are not provided.</p>
+                @if (!Model.IsDirty)
+                {
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <button name="Input.Action" value="GenerateCertificate">Generate signing certificate</button>
+                    </form>
+                }
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <button name="Input.Action" value="SignFile" disabled="@Model.IsDirty">Choose file and create CMS signature</button>
+                </form>
+            </details>
+            <details>
                 <summary>Public-key file encryption</summary>
                 <p>Uses this document's ECDH private key and a peer public key to produce the existing AES-GCM file format. Save first. The peer key is not stored or shown after the operation.</p>
                 <p>This is not a signature, sender identity check or public-key trust system. Confirm peer keys independently. Files are limited to 64 MiB for this compatible whole-file format; source files remain unchanged.</p>

@@ -48,6 +48,17 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.GenerateCertificate:
+                    ProjectDocument certificateDocument = RequireDocument();
+                    if (path is null || dirty) throw new InvalidOperationException("Save the document before generating its signing certificate.");
+                    crypto.EnsureCaCertificate(certificateDocument);
+                    dirty = true; revision++;
+                    return Snapshot() with { Message = "Signing certificate ready. Save the document before signing files." };
+                case WorkspaceAction.SignFile:
+                    ProjectDocument signingDocument = RequireDocument();
+                    if (path is null || dirty) throw new InvalidOperationException("Save the document and certificate before signing files.");
+                    if (!signingDocument.IsPkiEnabled) throw new InvalidOperationException("Generate or import a signing certificate first.");
+                    return Snapshot() with { Message = await fileTools.SignAsync(signingDocument, cancellationToken) };
                 case WorkspaceAction.GenerateKeys:
                     ProjectDocument keyDocument = RequireDocument();
                     if (path is null || dirty)

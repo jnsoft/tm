@@ -129,6 +129,24 @@ Document password change is now implemented in the following slice; remaining to
 - Retains the existing file format; wrong-document rejection tests are not proof of comprehensive ciphertext tamper authentication. Keep the old document/password when rotating keys if external encrypted files still depend on it.
 - WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
 
+## Detached CMS file signing and verification
+
+### Delivered
+- Compatible detached `.p7c` CMS signatures using the existing document certificate, jnUtil SHA-256 signing and end-certificate inclusion. Signing stages output beside the selected destination and never overwrites sources or existing outputs.
+- Certificate generation requires a saved, clean, unlocked document, marks it dirty and requires saving before signing. The workspace gate protects certificate lifetime through dialogs and signing; verification requires no document and uses native selection for data then signature.
+- Verification distinguishes invalid signatures, valid signatures with an untrusted chain, and valid signatures with a trusted system chain. It disables revocation retrieval and does not claim identity, timestamp, revocation or long-term-signature validation.
+- CMS input is limited to 64 MiB for compatible whole-file processing. Empty data files are explicitly rejected because the retained `SignedCms`/jnUtil implementation cannot create detached CMS signatures for empty content.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, zero failures (not a clean rebuild). Edited source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **166 passed, 0 failed, 0 skipped**.
+- Added coverage includes legacy CMS interoperability, malformed/tampered signatures, source/output preservation, cancellation, no-certificate/empty/oversized limits, certificate generation/save/sign guards, lock serialization, authenticated native-path verification and non-disclosure.
+
+### Outstanding and next work
+- Manually validate native dialogs, external/cross-machine certificate-chain trust, certificate-store policy, permissions, large-file boundaries and shutdown behavior with synthetic files.
+- Certificate import/export, signer identity/key distribution, revocation, timestamping and long-term trust remain pending. CMS validity is not a trusted identity assertion.
+- Legacy transfer workflows remain pending. Tasks 04/05 and native acceptance remain incomplete; WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
+
 ## Public-key file encryption and decryption
 
 ### Delivered

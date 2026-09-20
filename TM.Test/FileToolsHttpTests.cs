@@ -75,7 +75,7 @@ public sealed class FileToolsHttpTests
     {
         TestFileToolDialogs dialogs = new();
         ProjectCryptoService crypto = new();
-        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto));
+        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto));
         Assert.IsTrue((await tools.ExecuteAsync(FileUtilityOperation.Sha256)).Contains("canceled", StringComparison.Ordinal));
         Assert.AreEqual(0, dialogs.OutputCalls);
         dialogs.Input = "synthetic.txt";
@@ -85,6 +85,35 @@ public sealed class FileToolsHttpTests
         canceled.Cancel();
         await Assert.ThrowsAsync<OperationCanceledException>(() => tools.ExecuteAsync(FileUtilityOperation.Sha256, canceled.Token));
         Assert.AreEqual(2, dialogs.InputCalls);
+    }
+
+    [TestMethod]
+    public async Task SignatureVerification_UsesNativePathsAndSafeResultsAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.SignatureHttp.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string data = Path.Combine(directory, "private-data"), signature = Path.Combine(directory, "signature.p7c");
+            await File.WriteAllTextAsync(data, "synthetic signed data");
+            ProjectCryptoService crypto = new(); TM.Models.ProjectDocument document = new();
+            crypto.InitializeNew(document, "synthetic-password".ToCharArray().ToSecureStringAndClear()); crypto.EnsureCaCertificate(document);
+            try { await File.WriteAllBytesAsync(signature, crypto.SignFile(document, data)); }
+            finally { document.Security.CaCertificate?.Dispose(); crypto.ClearAll(document); }
+            TestFileToolDialogs dialogs = new(); dialogs.Inputs.Enqueue(data); dialogs.Inputs.Enqueue(signature);
+            await using DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, clipboard: new TestNativeClipboard(), fileDialogs: dialogs);
+            using HttpClient client = new(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false }) { BaseAddress = host.Security.Origin };
+            using (HttpResponseMessage anonymous = await client.PostAsync("/FileTools?handler=VerifySignature", new FormUrlEncodedContent([]))) Assert.AreEqual(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+            using (HttpResponseMessage bootstrap = await client.GetAsync(host.Security.BootstrapUri)) Assert.AreEqual(HttpStatusCode.Redirect, bootstrap.StatusCode);
+            client.DefaultRequestHeaders.Add("Origin", host.Security.Origin.GetLeftPart(UriPartial.Authority)); client.DefaultRequestHeaders.Add("HX-Request", "true");
+            string html = await client.GetStringAsync("/FileTools");
+            string token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]*)\"", RegexOptions.None, TimeSpan.FromSeconds(1)).Groups[1].Value);
+            using HttpResponseMessage response = await client.PostAsync("/FileTools?handler=VerifySignature", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["DataPath"] = data }));
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode); string result = await response.Content.ReadAsStringAsync();
+            Assert.IsTrue(result.Contains("CMS signature is valid", StringComparison.Ordinal));
+            Assert.IsFalse(result.Contains(directory, StringComparison.Ordinal)); Assert.IsFalse(result.Contains("synthetic signed data", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(directory, true); }
     }
 }
 

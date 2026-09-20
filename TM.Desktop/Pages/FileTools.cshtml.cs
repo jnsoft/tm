@@ -16,6 +16,13 @@ public sealed class FileToolsModel(FileToolsService tools) : PageModel
     [BindProperty, StringLength(4096)] public string ConfirmFilePassword { get; set; } = "";
     public string StatusMessage { get; private set; } = "Ready.";
 
+    public async Task<IActionResult> OnPostVerifySignatureAsync(CancellationToken cancellationToken)
+    {
+        StatusMessage = await tools.VerifySignatureAsync(cancellationToken);
+        ModelState.Clear();
+        return Request.Headers.ContainsKey("HX-Request") ? Partial("_FileTools", StatusMessage) : Page();
+    }
+
     public async Task<IActionResult> OnPostAccountAsync(CancellationToken cancellationToken)
     {
         StatusMessage = ModelState.IsValid && Enum.IsDefined(AccountOperation)

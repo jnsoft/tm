@@ -90,7 +90,7 @@ public sealed class AccountFileHttpTests
         };
         ProjectCryptoService crypto = new();
         using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(),
-            new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto));
+            new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto));
         using CancellationTokenSource canceled = new();
         canceled.Cancel();
         await Assert.ThrowsAsync<OperationCanceledException>(() => tools.ExecuteAccountAsync(AccountFileOperation.Encrypt, true, canceled.Token));

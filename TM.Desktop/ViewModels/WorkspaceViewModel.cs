@@ -4,7 +4,7 @@ using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile }
 
 public sealed class WorkspaceCommand
 {

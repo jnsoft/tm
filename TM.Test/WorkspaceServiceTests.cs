@@ -22,7 +22,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto));
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto));
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
@@ -495,6 +495,40 @@ public sealed class WorkspaceServiceTests
             Assert.IsFalse(locking.IsCompleted, "Lock must wait while a file operation holds the document.");
             fileDialogs.ReleaseInput.TrySetResult();
             await operation;
+            Assert.IsTrue((await locking).IsLocked);
+        }
+        finally { fileDialogs.ReleaseInput.TrySetResult(); }
+    }
+
+    [TestMethod]
+    public async Task Signing_RequiresSavedCurrentCertificateDocumentAndHoldsLifetimeAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));
+        await NewAsync();
+        dialogs.SavePath = Path.Combine(directory, "signing.xml");
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));
+        WorkspaceViewModel generated = await SendAsync(WorkspaceAction.GenerateCertificate);
+        Assert.IsTrue(generated.IsDirty);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));
+        saved = await SendAsync(WorkspaceAction.Save);
+        fileDialogs.Input = Path.Combine(directory, "sign-data");
+        fileDialogs.Output = Path.Combine(directory, "sign-data.p7c");
+        await File.WriteAllTextAsync(fileDialogs.Input, "synthetic signing data");
+        WorkspaceViewModel signed = await SendAsync(WorkspaceAction.SignFile);
+        Assert.IsFalse(signed.IsDirty);
+        Assert.IsTrue(signed.Message!.Contains("signature created", StringComparison.Ordinal));
+        fileDialogs.InputEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.ReleaseInput = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.Input = null;
+        Task<WorkspaceViewModel> pending = workspace.ExecuteAsync(new() { Action = WorkspaceAction.SignFile, Revision = saved.Revision });
+        try
+        {
+            await fileDialogs.InputEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task<WorkspaceViewModel> locking = workspace.ExecuteAsync(new() { Action = WorkspaceAction.Lock, Revision = saved.Revision });
+            Assert.IsFalse(locking.IsCompleted);
+            fileDialogs.ReleaseInput.TrySetResult();
+            await pending;
             Assert.IsTrue((await locking).IsLocked);
         }
         finally { fileDialogs.ReleaseInput.TrySetResult(); }

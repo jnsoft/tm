@@ -7,9 +7,48 @@ namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
     DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles,
-    PublicKeyFileService publicKeyFiles) : IDisposable
+    PublicKeyFileService publicKeyFiles, DocumentSignatureService signatures) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
+
+    // WorkspaceService holds its document/certificate lifetime gate before acquiring this service's gate.
+    public async Task<string> SignAsync(ProjectDocument document, CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            if (input is null) return "Operation canceled. No signature was created.";
+            string? output = await dialogs.SelectOutputAsync(Path.GetFileName(input) + ".p7c", cancellationToken);
+            if (output is null) return "Operation canceled. No signature was created.";
+            await signatures.CreateAsync(document, input, output, cancellationToken);
+            return "Detached CMS signature created. The source file was retained.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
+        { return "Signature operation failed. Check the certificate, file limit and permissions; existing files are not overwritten."; }
+        finally { gate.Release(); }
+    }
+
+    public async Task<string> VerifySignatureAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? data = await dialogs.SelectInputAsync(cancellationToken);
+            if (data is null) return "Operation canceled. No files were changed.";
+            string? signature = await dialogs.SelectInputAsync(cancellationToken);
+            if (signature is null) return "Operation canceled. No files were changed.";
+            return await signatures.VerifyAsync(data, signature, cancellationToken) switch
+            {
+                SignatureVerificationResult.ValidTrusted => "CMS signature is valid and the included certificate chain is trusted.",
+                SignatureVerificationResult.ValidUntrusted => "CMS signature is valid, but the included certificate chain is not trusted by this system.",
+                _ => "CMS signature is invalid for the selected file."
+            };
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { return "Signature verification failed. Check the selected files, format, file limit and permissions."; }
+        finally { gate.Release(); }
+    }
 
     // WorkspaceService holds its document/key lifetime gate before acquiring this service's gate.
     public async Task<string> ExecutePublicKeyAsync(ProjectDocument document, PublicKeyFileOperation operation,

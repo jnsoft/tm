@@ -16,6 +16,12 @@
         </select></label>
         <button>Choose files and run</button>
     </form>
+    <h3>Detached CMS signature verification</h3>
+    <p>Select the original data file, then its `.p7c` signature. Validity and system certificate-chain trust are reported separately. This does not establish a trusted identity, timestamp or revocation status.</p>
+    <form method="post" action="/FileTools?handler=VerifySignature" hx-post="/FileTools?handler=VerifySignature" hx-target="#file-tools" hx-swap="outerHTML">
+        @Html.AntiForgeryToken()
+        <button>Choose data and CMS signature to verify</button>
+    </form>
     <h3>Password file encryption</h3>
     <p>Uses the existing TM/jnUtil file format. Source files are retained: encryption does not delete or secure the original plaintext. Output files must be new.</p>
     <p>Legacy encryption cannot be interrupted mid-call. Cancellation prevents publishing its output after the call finishes. Deleted temporary files are not securely erased.</p>

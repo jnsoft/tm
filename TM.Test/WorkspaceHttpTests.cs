@@ -67,10 +67,95 @@ public sealed class WorkspaceHttpTests
         Assert.IsTrue(browser.Html.Contains("Keep this", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task GeneratedPassword_IsOnlyDisclosedByExplicitRevealAsync(bool complex)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.HttpGeneration.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "generated.xml") };
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs);
+            await browser.PostAsync("New", ("Password", "http-test-password"));
+            await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+            Assert.IsFalse(browser.Html.Contains("Generate and replace password", StringComparison.Ordinal));
+            await browser.PostAsync("Add", ("NodeType", "Protected"), ("NodeId", browser.EditorId), ("Name", "Credential"));
+            string id = browser.EditorId;
+            Assert.IsTrue(browser.Html.Contains("Generate and replace password", StringComparison.Ordinal));
+            if (complex)
+                await browser.PostAsync("GeneratePassword", ("NodeId", id), ("ConfirmGeneratePassword", "true"),
+                    ("GeneratedPasswordLength", "30"), ("UseComplexGeneratedPassword", "true"));
+            else
+                await browser.PostAsync("GeneratePassword", ("NodeId", id), ("ConfirmGeneratePassword", "true"));
+            string generatedHtml = browser.Html;
+            Assert.IsFalse(generatedHtml.Contains("data-secret", StringComparison.Ordinal));
+            await browser.PostAsync("Reveal", ("NodeId", id));
+            string secret = RevealedSecret(browser.Html);
+            Assert.AreEqual(complex ? 30 : 12, secret.Length);
+            // Compare against Razor's encoded output as well as the raw value.
+            string encoded = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(secret);
+            Assert.IsFalse(generatedHtml.Contains(secret, StringComparison.Ordinal));
+            Assert.IsFalse(generatedHtml.Contains(encoded, StringComparison.Ordinal));
+            string ordinaryGet = await browser.Client.GetStringAsync("/");
+            Assert.IsFalse(ordinaryGet.Contains("data-secret", StringComparison.Ordinal));
+            Assert.IsFalse(ordinaryGet.Contains(encoded, StringComparison.Ordinal));
+            await browser.PostAsync("Save");
+            Assert.IsFalse((await File.ReadAllTextAsync(dialogs.SavePath)).Contains(secret, StringComparison.Ordinal));
+            await browser.PostAsync("Lock");
+            Assert.IsFalse(browser.Html.Contains("data-secret", StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("Generate and replace password", StringComparison.Ordinal));
+            await browser.PostAsync("GeneratePassword", ("NodeId", id), ("ConfirmGeneratePassword", "true"));
+            Assert.IsTrue(browser.Html.Contains("Open or unlock", StringComparison.Ordinal));
+            await browser.PostAsync("Unlock", ("Password", "http-test-password"));
+            await browser.PostAsync("Reveal", ("NodeId", id));
+            Assert.AreEqual(secret, RevealedSecret(browser.Html));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [TestMethod]
+    public async Task InvalidGenerationPosts_DoNotReplaceExistingPasswordAsync()
+    {
+        await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());
+        await browser.PostAsync("New", ("Password", "http-test-password"));
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+        await browser.PostAsync("Add", ("NodeType", "Protected"), ("NodeId", browser.EditorId), ("Name", "Credential"));
+        string id = browser.EditorId;
+        await browser.PostAsync("Edit", ("NodeId", id), ("Name", "Credential"),
+            ("ReplaceSecret", "true"), ("Secret", "keep-http-secret"));
+        string revision = browser.Revision;
+        foreach (string length in new[] { "4", "31", "not-a-number", "2147483648" })
+        {
+            await browser.PostAsync("GeneratePassword", ("NodeId", id), ("ConfirmGeneratePassword", "true"),
+                ("GeneratedPasswordLength", length));
+            Assert.IsTrue(browser.Html.Contains("Check the submitted", StringComparison.Ordinal));
+            Assert.AreEqual(revision, browser.Revision);
+            Assert.IsFalse(browser.Html.Contains("keep-http-secret", StringComparison.Ordinal));
+        }
+        await browser.PostAsync("GeneratePassword", ("NodeId", id));
+        Assert.IsTrue(browser.Html.Contains("Confirm replacing", StringComparison.Ordinal));
+        Assert.AreEqual(revision, browser.Revision);
+        await browser.PostAsync("GeneratePassword", ("NodeId", id), ("ConfirmGeneratePassword", "true"), ("Revision", "0"));
+        Assert.IsTrue(browser.Html.Contains("document changed", StringComparison.Ordinal));
+        Assert.AreEqual(revision, browser.Revision);
+        await browser.PostAsync("Reveal", ("NodeId", id));
+        Assert.AreEqual("keep-http-secret", RevealedSecret(browser.Html));
+    }
+
+    private static string RevealedSecret(string html)
+    {
+        Match match = Regex.Match(html, "<output data-secret>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
+        Assert.IsTrue(match.Success, "Expected an explicit reveal response.");
+        return WebUtility.HtmlDecode(match.Groups[1].Value);
+    }
+
     private sealed class HttpWorkspace(DesktopWebHost host, HttpClient client) : IAsyncDisposable
     {
         public HttpClient Client => client;
         public string Html { get; private set; } = "";
+        public string Revision => Field(Html, "Input.Revision");
         public string EditorId
         {
             get

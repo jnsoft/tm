@@ -195,6 +195,107 @@ public sealed class WorkspaceServiceTests
         Assert.HasCount(1, (await SendAsync(WorkspaceAction.Filter)).Tree);
     }
 
+    [TestMethod]
+    [DataRow(5, false)]
+    [DataRow(12, false)]
+    [DataRow(30, false)]
+    [DataRow(5, true)]
+    [DataRow(12, true)]
+    [DataRow(30, true)]
+    public async Task GeneratePassword_EncryptsAndPersistsWithoutReturningPlaintextAsync(int length, bool complex)
+    {
+        await NewAsync();
+        WorkspaceViewModel root = await AddAsync(ProjectItemType.Project, "Root");
+        WorkspaceViewModel item = await AddAsync(ProjectItemType.Protected, "Credential", root.Editor!.Id);
+        string id = item.Editor!.Id;
+        await SendAsync(WorkspaceAction.Edit, command =>
+        {
+            command.NodeId = id;
+            command.Name = "Credential";
+            command.Description = "Keep description";
+            command.Login = "Keep login";
+            command.Url = "https://example.invalid";
+            command.ReplaceSecret = true;
+            command.Secret = "original-synthetic-secret";
+        });
+        dialogs.SavePath = Path.Combine(directory, "generated.xml");
+        WorkspaceViewModel before = await SendAsync(WorkspaceAction.Save);
+        WorkspaceViewModel generated = await SendAsync(WorkspaceAction.GeneratePassword, command =>
+        {
+            command.NodeId = id;
+            command.ConfirmGeneratePassword = true;
+            command.GeneratedPasswordLength = length;
+            command.UseComplexGeneratedPassword = complex;
+        });
+        Assert.AreEqual(before.Revision + 1, generated.Revision);
+        Assert.IsTrue(generated.IsDirty);
+        Assert.AreEqual(before.Editor, generated.Editor);
+        Assert.IsNull(generated.RevealedPassword);
+        Assert.IsNull((await workspace.SnapshotAsync()).RevealedPassword);
+        string secret = (await SendAsync(WorkspaceAction.Reveal, command => command.NodeId = id)).RevealedPassword!;
+        Assert.AreEqual(length, secret.Length);
+        await SendAsync(WorkspaceAction.Save);
+        await SendAsync(WorkspaceAction.Lock);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.GeneratePassword, command =>
+        {
+            command.NodeId = id;
+            command.ConfirmGeneratePassword = true;
+        }));
+        await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+        Assert.AreEqual(secret, (await SendAsync(WorkspaceAction.Reveal, command => command.NodeId = id)).RevealedPassword);
+    }
+
+    [TestMethod]
+    public async Task GeneratePassword_RejectedRequestsPreserveSavedSecretAndRevisionAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.GeneratePassword));
+        await NewAsync();
+        WorkspaceViewModel root = await AddAsync(ProjectItemType.Project, "Root");
+        WorkspaceViewModel item = await AddAsync(ProjectItemType.Protected, "Credential", root.Editor!.Id);
+        string id = item.Editor!.Id;
+        await SendAsync(WorkspaceAction.Edit, command =>
+        {
+            command.NodeId = id;
+            command.Name = "Credential";
+            command.ReplaceSecret = true;
+            command.Secret = "keep-this-secret";
+        });
+        dialogs.SavePath = Path.Combine(directory, "unchanged.xml");
+        WorkspaceViewModel before = await SendAsync(WorkspaceAction.Save);
+        WorkspaceCommand Request() => new()
+        {
+            Action = WorkspaceAction.GeneratePassword, Revision = before.Revision,
+            NodeId = id, ConfirmGeneratePassword = true
+        };
+        foreach (int length in new[] { int.MinValue, 4, 31, int.MaxValue })
+        {
+            WorkspaceCommand invalid = Request();
+            invalid.GeneratedPasswordLength = length;
+            await Assert.ThrowsAsync<ValidationException>(() => workspace.ExecuteAsync(invalid));
+        }
+        WorkspaceCommand unconfirmed = Request();
+        unconfirmed.ConfirmGeneratePassword = false;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(unconfirmed));
+        foreach (string? target in new[] { root.Editor!.Id, "missing", null })
+        {
+            WorkspaceCommand invalid = Request();
+            invalid.NodeId = target;
+            await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(invalid));
+        }
+        WorkspaceCommand stale = Request();
+        stale.Revision--;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(stale));
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(() => workspace.ExecuteAsync(Request(), cancellation.Token));
+        WorkspaceViewModel after = await workspace.SnapshotAsync();
+        Assert.AreEqual(before.Revision, after.Revision);
+        Assert.IsFalse(after.IsDirty);
+        Assert.AreEqual(before.Editor, after.Editor);
+        Assert.IsNull(after.RevealedPassword);
+        Assert.AreEqual("keep-this-secret", (await SendAsync(WorkspaceAction.Reveal, command => command.NodeId = id)).RevealedPassword);
+    }
+
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");
     private Task<WorkspaceViewModel> AddAsync(ProjectItemType type, string name, string? parent = null) =>
         SendAsync(WorkspaceAction.Add, command => { command.NodeType = type; command.Name = name; command.NodeId = parent; });

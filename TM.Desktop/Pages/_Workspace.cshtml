@@ -102,6 +102,19 @@
                         <p>Apply edits before selecting another item or saving the file.</p>
                         <button name="Input.Action" value="Edit">Apply edits</button>
                     </form>
+                    @if (editor.Type is ProjectItemType.Protected)
+                    {
+                        <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                            <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                            <label>Generated password length <input type="number" name="Input.GeneratedPasswordLength" min="5" max="30" value="12" required /></label>
+                            <label><input type="checkbox" name="Input.UseComplexGeneratedPassword" value="true" /> Complex password</label>
+                            <label><input type="checkbox" name="Input.ConfirmGeneratePassword" value="true" required /> Confirm replacing the protected password</label>
+                            <p>Generation replaces only the protected password in this document. Save to keep it; use Reveal to view it.</p>
+                            <button name="Input.Action" value="GeneratePassword">Generate and replace password</button>
+                        </form>
+                    }
                     <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />

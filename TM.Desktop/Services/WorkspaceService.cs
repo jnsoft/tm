@@ -118,6 +118,10 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                     selectedId = secret.Id;
                     revealed = crypto.DecryptSecret(RequireDocument(), secret.Password);
                     break;
+                case WorkspaceAction.GeneratePassword:
+                    GeneratePassword(command);
+                    dirty = true;
+                    break;
                 default: throw new InvalidOperationException("Unsupported operation.");
             }
             revision++;
@@ -180,6 +184,25 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             if (node.IsLeaf) node.Progress = command.Progress;
         }
         selectedId = node.Id;
+    }
+
+    private void GeneratePassword(WorkspaceCommand command)
+    {
+        NodeModel node = FindNode(command.NodeId);
+        if (!node.IsProtected) throw new InvalidOperationException("Select a protected item.");
+        if (!command.ConfirmGeneratePassword)
+            throw new InvalidOperationException("Confirm replacing the protected password first.");
+
+        using SecureString generated = SecurityHelper.GeneratePassword(
+            command.GeneratedPasswordLength, command.UseComplexGeneratedPassword);
+        string plain = generated.ToInsecureString();
+        try
+        {
+            string encrypted = crypto.EncryptSecret(RequireDocument(), plain);
+            node.Password = encrypted;
+            selectedId = node.Id;
+        }
+        finally { SecurityHelper.ZeroString(plain); }
     }
 
     private WorkspaceViewModel Snapshot(string? revealed = null)

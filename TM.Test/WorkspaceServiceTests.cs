@@ -12,6 +12,8 @@ public sealed class WorkspaceServiceTests
     private readonly string directory = Path.Combine(Path.GetTempPath(), $"TM.WorkspaceTests.{Guid.NewGuid():N}");
     private readonly TestProjectFileDialogs dialogs = new();
     private readonly TestNativeClipboard nativeClipboard = new();
+    private readonly TestFileToolDialogs fileDialogs = new();
+    private readonly FileToolsService fileTools;
     private readonly ExpiringClipboardService clipboard;
     private readonly WorkspaceService workspace;
 
@@ -19,7 +21,8 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard);
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto));
+        workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
     [TestInitialize]
@@ -30,6 +33,7 @@ public sealed class WorkspaceServiceTests
     {
         workspace.Dispose();
         clipboard.Dispose();
+        fileTools.Dispose();
         Directory.Delete(directory, recursive: true);
     }
 
@@ -436,6 +440,63 @@ public sealed class WorkspaceServiceTests
         await SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = id);
         await NewAsync();
         Assert.IsNull(nativeClipboard.Text);
+    }
+
+    [TestMethod]
+    public async Task DocumentFiles_RequireSavedUnlockedCurrentDocumentAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.DocumentFile));
+        await NewAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.DocumentFile));
+        Assert.AreEqual(0, fileDialogs.InputCalls);
+        dialogs.SavePath = Path.Combine(directory, "document.xml");
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(new()
+        {
+            Action = WorkspaceAction.DocumentFile, Revision = saved.Revision - 1
+        }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.DocumentFile,
+            command => command.DocumentFileOperation = (DocumentFileOperation)99));
+        Assert.AreEqual(0, fileDialogs.InputCalls);
+        WorkspaceViewModel canceled = await SendAsync(WorkspaceAction.DocumentFile);
+        Assert.AreEqual(saved.Revision, canceled.Revision);
+        Assert.IsFalse(canceled.IsDirty);
+        fileDialogs.Input = Path.Combine(directory, "source");
+        fileDialogs.Output = Path.Combine(directory, "encrypted");
+        await File.WriteAllTextAsync(fileDialogs.Input, "document-file-content");
+        WorkspaceViewModel encrypted = await SendAsync(WorkspaceAction.DocumentFile);
+        Assert.IsFalse(encrypted.IsDirty);
+        Assert.AreEqual(saved.Revision, encrypted.Revision);
+        Assert.IsNull(encrypted.RevealedPassword);
+        fileDialogs.Input = fileDialogs.Output;
+        fileDialogs.Output = Path.Combine(directory, "plain");
+        await SendAsync(WorkspaceAction.DocumentFile, command => command.DocumentFileOperation = DocumentFileOperation.Decrypt);
+        Assert.AreEqual("document-file-content", await File.ReadAllTextAsync(fileDialogs.Output));
+        await AddAsync(ProjectItemType.Project, "Unsaved");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.DocumentFile));
+        await SendAsync(WorkspaceAction.Lock, command => command.ConfirmDiscard = true);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.DocumentFile));
+    }
+
+    [TestMethod]
+    public async Task DocumentFileDialog_HoldsDocumentLifetimeUntilCompletionAsync()
+    {
+        await NewAsync();
+        dialogs.SavePath = Path.Combine(directory, "document.xml");
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        fileDialogs.InputEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.ReleaseInput = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<WorkspaceViewModel> operation = workspace.ExecuteAsync(new() { Action = WorkspaceAction.DocumentFile, Revision = saved.Revision });
+        try
+        {
+            await fileDialogs.InputEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task<WorkspaceViewModel> locking = workspace.ExecuteAsync(new() { Action = WorkspaceAction.Lock, Revision = saved.Revision });
+            Assert.IsFalse(locking.IsCompleted, "Lock must wait while a file operation holds the document.");
+            fileDialogs.ReleaseInput.TrySetResult();
+            await operation;
+            Assert.IsTrue((await locking).IsLocked);
+        }
+        finally { fileDialogs.ReleaseInput.TrySetResult(); }
     }
 
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");

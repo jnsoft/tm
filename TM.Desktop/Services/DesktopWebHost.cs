@@ -53,6 +53,7 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<IFileToolDialogs>(fileDialogs ?? projectDialogs as IFileToolDialogs ?? new PhotinoProjectFileDialogs());
         builder.Services.AddSingleton<FileUtilityService>();
         builder.Services.AddSingleton<PasswordFileService>();
+        builder.Services.AddSingleton<DocumentFileService>();
         builder.Services.AddSingleton<FileToolsService>();
         if (clipboard is null) builder.Services.AddSingleton<INativeClipboard, WindowsNativeClipboard>();
         else builder.Services.AddSingleton(clipboard);

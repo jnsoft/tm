@@ -108,3 +108,23 @@ Document password change is now implemented in the following slice; remaining to
 - Manual native file/password UX, permissions, large-file behavior and shutdown/cancellation during synchronous crypto remain acceptance items. Deterministic mid-call cancellation and destination-race tests are deferred.
 - Existing format is retained; these tests do not establish comprehensive tamper authentication for arbitrary legacy ciphertext. Staging inherits destination-directory permissions; cleanup is deletion, not secure erasure.
 - Next: document-key file encryption and HMAC under workspace locking, followed by signing/certificates and compatibility transfers. Tasks 04/05 remain incomplete; no stable tag, push, cutover or cross-platform claim.
+
+## Document-key file encryption/decryption
+
+### Delivered
+- Native-selected document-key file operations matching WPF's `file encryption` HKDF context, 32-byte salt/key and existing jnUtil key-based file format.
+- Requires a saved, unmodified, unlocked workspace before dialogs. The workspace gate protects document/key lifetime through native selection and the complete awaited crypto call; file tools also share their own serialization gate. No inverse gate dependency was introduced.
+- Source files remain untouched; staged output publishes without overwrite only after success/cancellation checks. Temporary derived-key references are cleared on every exit, including both the original buffer and a potentially replaced jnUtil ref argument.
+- Document-file commands leave document revision/dirty state unchanged and return no key, password, path or file contents. The UI explains retained plaintext, original-document/password recovery and password-change key rotation.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, not a clean rebuild. Edited source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **139 passed, 0 failed, 0 skipped**.
+- Six new cases cover empty/multi-buffer bidirectional legacy interoperability, wrong-document/malformed-file rejection, source/output preservation, pre-cancellation/cleanup, saved/dirty/locked/stale workspace guards, native path selection/non-disclosure and deterministic lock serialization while a fake dialog is held open.
+- Existing password-file, frozen document/key/certificate compatibility and native smoke tests also pass. Automated file-dialog tests use fakes and disposable synthetic files.
+
+### Outstanding and next work
+- HMAC remains next, followed by account-bound/public-key file operations, signing/certificates and compatibility transfers. Tasks 04/05 remain incomplete.
+- Manual native dialogs, large-file behavior, request cancellation and shutdown while legacy crypto runs remain acceptance items. Synchronous legacy work must finish before cancellation can prevent publication; document locking waits for the operation. Staged plaintext deletion is not secure erasure.
+- Retains the existing file format; wrong-document rejection tests are not proof of comprehensive ciphertext tamper authentication. Keep the old document/password when rotating keys if external encrypted files still depend on it.
+- WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.

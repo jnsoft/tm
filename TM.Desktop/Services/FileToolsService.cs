@@ -1,10 +1,12 @@
 using TM.Services;
 using System.Security;
 using jnUtil;
+using TM.Models;
 
 namespace TM.Desktop.Services;
 
-public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles) : IDisposable
+public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
+    DocumentFileService documentFiles) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
@@ -60,6 +62,31 @@ public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs 
             or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
         {
             return "File operation failed. Check the password, input format and permissions, and choose a new output file. Existing files are not overwritten.";
+        }
+        finally { gate.Release(); }
+    }
+
+    // Called only while WorkspaceService holds its document lifetime gate.
+    public async Task<string> ExecuteDocumentAsync(ProjectDocument document, DocumentFileOperation operation,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(operation)) return "Choose a supported document-file operation.";
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            if (input is null) return "Operation canceled. No output was created.";
+            cancellationToken.ThrowIfCancellationRequested();
+            string suffix = operation is DocumentFileOperation.Encrypt ? ".aes" : ".decrypted";
+            string? output = await dialogs.SelectOutputAsync(Path.GetFileName(input) + suffix, cancellationToken);
+            if (output is null) return "Operation canceled. No output was created.";
+            await documentFiles.ExecuteAsync(document, operation, input, output, cancellationToken);
+            return "Output file created using the document key. The source file was retained.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or FormatException
+            or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            return "Document-key file operation failed. Check the document, input format and permissions, and choose a new output file.";
         }
         finally { gate.Release(); }
     }

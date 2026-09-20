@@ -1,13 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using TM.Entities;
+using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile }
 
 public sealed class WorkspaceCommand
 {
     public WorkspaceAction Action { get; set; }
+    public DocumentFileOperation DocumentFileOperation { get; set; }
     public long Revision { get; set; }
     public string? NodeId { get; set; }
     public ProjectItemType NodeType { get; set; }

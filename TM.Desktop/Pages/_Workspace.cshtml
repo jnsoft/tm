@@ -41,6 +41,21 @@
                 <button name="Input.Action" value="ChangePassword">Change password</button>
             </form>
         </details>
+            <details>
+                <summary>Document-key file encryption</summary>
+                <p>Save this document and any password changes first. Keep a secure copy of this document and its password to recover encrypted files. Changing the document password changes its file key.</p>
+                <p>Source files are retained, including plaintext. Existing output files are refused. Legacy crypto must finish before cancellation, locking or document replacement can complete.</p>
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <input type="hidden" name="Input.Action" value="DocumentFile" />
+                    <label>Document-key operation <select name="Input.DocumentFileOperation">
+                        <option value="Encrypt">Encrypt file using this document</option>
+                        <option value="Decrypt">Decrypt file using this document</option>
+                    </select></label>
+                    <button disabled="@Model.IsDirty">Choose files and run with document key</button>
+                </form>
+            </details>
         <div class="workspace-grid">
             <nav aria-label="Projects and tasks">
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">

@@ -74,7 +74,7 @@ public sealed class FileToolsHttpTests
     public async Task CanceledDialogsAndToken_DoNotCreateOutputsAsync()
     {
         TestFileToolDialogs dialogs = new();
-        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService());
+        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(), new DocumentFileService(new ProjectCryptoService()));
         Assert.IsTrue((await tools.ExecuteAsync(FileUtilityOperation.Sha256)).Contains("canceled", StringComparison.Ordinal));
         Assert.AreEqual(0, dialogs.OutputCalls);
         dialogs.Input = "synthetic.txt";
@@ -93,10 +93,14 @@ internal sealed class TestFileToolDialogs : IFileToolDialogs
     public string? Output { get; set; }
     public int InputCalls { get; private set; }
     public int OutputCalls { get; private set; }
-    public Task<string?> SelectInputAsync(CancellationToken cancellationToken = default)
+    public TaskCompletionSource? InputEntered { get; set; }
+    public TaskCompletionSource? ReleaseInput { get; set; }
+    public async Task<string?> SelectInputAsync(CancellationToken cancellationToken = default)
     {
         InputCalls++;
-        return Task.FromResult(Input);
+        InputEntered?.TrySetResult();
+        if (ReleaseInput is { } release) await release.Task.WaitAsync(cancellationToken);
+        return Input;
     }
     public Task<string?> SelectOutputAsync(string suggestedName, CancellationToken cancellationToken = default)
     {

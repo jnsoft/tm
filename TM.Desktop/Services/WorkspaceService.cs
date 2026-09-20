@@ -9,7 +9,7 @@ using TM.Services;
 namespace TM.Desktop.Services;
 
 public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService crypto, IProjectFileDialogs dialogs,
-    ExpiringClipboardService clipboard) : IDisposable
+    ExpiringClipboardService clipboard, FileToolsService fileTools) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private ProjectDocument? document;
@@ -47,6 +47,14 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.DocumentFile:
+                    ProjectDocument fileDocument = RequireDocument();
+                    if (path is null || dirty)
+                        throw new InvalidOperationException("Save the document and all password changes before using its file key.");
+                    if (!Enum.IsDefined(command.DocumentFileOperation))
+                        throw new InvalidOperationException("Choose a supported document-file operation.");
+                    string fileMessage = await fileTools.ExecuteDocumentAsync(fileDocument, command.DocumentFileOperation, cancellationToken);
+                    return Snapshot() with { Message = fileMessage };
                 case WorkspaceAction.Refresh: break;
                 case WorkspaceAction.New:
                     RequireDiscard(command);

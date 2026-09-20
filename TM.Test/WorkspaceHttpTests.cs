@@ -237,6 +237,46 @@ public sealed class WorkspaceHttpTests
         Assert.AreEqual("external text", clipboard.Text);
     }
 
+    [TestMethod]
+    public async Task DocumentFilePosts_UseNativePathsAndRejectDirtyLockedAndStaleRequestsAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.DocumentFileHttp.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "document.xml") };
+            TestFileToolDialogs files = new() { Input = Path.Combine(directory, "source"), Output = Path.Combine(directory, "encrypted") };
+            await File.WriteAllTextAsync(files.Input, "synthetic external contents");
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs, fileDialogs: files);
+            await browser.PostAsync("New", ("Password", "test-document-password"));
+            await browser.PostAsync("DocumentFile");
+            Assert.IsTrue(browser.Html.Contains("Save the document", StringComparison.Ordinal));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("Save");
+            string revision = browser.Revision;
+            await browser.PostAsync("DocumentFile", ("Revision", "0"));
+            Assert.IsTrue(browser.Html.Contains("document changed", StringComparison.Ordinal));
+            await browser.PostAsync("DocumentFile", ("DocumentFileOperation", "999"));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("DocumentFile", ("SourcePath", "ignored"), ("DestinationPath", Path.Combine(directory, "injected")));
+            Assert.IsTrue(browser.Html.Contains("Output file created", StringComparison.Ordinal));
+            Assert.AreEqual(revision, browser.Revision);
+            Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("synthetic external contents", StringComparison.Ordinal));
+            Assert.IsFalse(File.Exists(Path.Combine(directory, "injected")));
+            files.Input = files.Output;
+            files.Output = Path.Combine(directory, "plain");
+            await browser.PostAsync("DocumentFile", ("DocumentFileOperation", "Decrypt"));
+            Assert.AreEqual("synthetic external contents", await File.ReadAllTextAsync(files.Output));
+            await browser.PostAsync("Lock");
+            int calls = files.InputCalls;
+            await browser.PostAsync("DocumentFile");
+            Assert.IsTrue(browser.Html.Contains("Open or unlock", StringComparison.Ordinal));
+            Assert.AreEqual(calls, files.InputCalls);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private static string RevealedSecret(string html)
     {
         Match match = Regex.Match(html, "<output data-secret>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
@@ -259,10 +299,11 @@ public sealed class WorkspaceHttpTests
             }
         }
 
-        public static async Task<HttpWorkspace> CreateAsync(TestProjectFileDialogs dialogs, TestNativeClipboard? clipboard = null)
+        public static async Task<HttpWorkspace> CreateAsync(TestProjectFileDialogs dialogs, TestNativeClipboard? clipboard = null,
+            IFileToolDialogs? fileDialogs = null)
         {
             DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, dialogs: dialogs,
-                clipboard: clipboard ?? new TestNativeClipboard());
+                clipboard: clipboard ?? new TestNativeClipboard(), fileDialogs: fileDialogs);
             HttpClient client = new(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
             {
                 BaseAddress = host.Security.Origin,

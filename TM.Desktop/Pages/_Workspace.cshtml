@@ -42,6 +42,24 @@
             </form>
         </details>
             <details>
+                <summary>Signing certificate import and export</summary>
+                <p>Importing a PFX replaces this document's future signing identity. PFX files can contain an exportable private key; keep their password and contents secure. Existing signatures are not re-signed.</p>
+                <p>Export writes only the public DER `.cer` certificate, never a private key or PFX. Import/export does not modify Windows certificate stores or establish certificate trust.</p>
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <label>PFX password <input type="password" name="Input.CertificatePassword" required maxlength="4096" autocomplete="off" /></label>
+                    <label>Confirm PFX password <input type="password" name="Input.ConfirmCertificatePassword" required maxlength="4096" autocomplete="off" /></label>
+                    <label><input type="checkbox" name="Input.ConfirmCertificateReplacement" value="true" required /> I confirm replacing this document signing certificate</label>
+                    <button name="Input.Action" value="ImportCertificate" disabled="@Model.IsDirty">Choose PFX and import certificate</button>
+                </form>
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <button name="Input.Action" value="ExportCertificate" disabled="@Model.IsDirty">Choose destination and export public certificate</button>
+                </form>
+            </details>
+            <details>
                 <summary>CMS file signing</summary>
                 <p>Generate a document signing certificate, save, then create a detached `.p7c` CMS signature. The source file is retained and existing signature outputs are refused.</p>
                 <p>A valid CMS signature does not by itself prove a trusted identity. Verification reports system chain trust separately; revocation and timestamping are not provided.</p>

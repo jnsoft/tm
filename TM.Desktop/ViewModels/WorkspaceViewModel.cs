@@ -4,7 +4,7 @@ using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile, ImportCertificate, ExportCertificate }
 
 public sealed class WorkspaceCommand
 {
@@ -22,6 +22,9 @@ public sealed class WorkspaceCommand
     [StringLength(4096)] public string Password { get; set; } = "";
     [StringLength(4096)] public string NewPassword { get; set; } = "";
     [StringLength(4096)] public string ConfirmNewPassword { get; set; } = "";
+    [StringLength(4096)] public string CertificatePassword { get; set; } = "";
+    [StringLength(4096)] public string ConfirmCertificatePassword { get; set; } = "";
+    public bool ConfirmCertificateReplacement { get; set; }
     public bool ConfirmPasswordChange { get; set; }
     [StringLength(4096)] public string Secret { get; set; } = "";
     public bool ReplaceSecret { get; set; }

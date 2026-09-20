@@ -7,9 +7,37 @@ namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
     DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles,
-    PublicKeyFileService publicKeyFiles, DocumentSignatureService signatures) : IDisposable
+    PublicKeyFileService publicKeyFiles, DocumentSignatureService signatures, DocumentCertificateService certificates) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
+
+    public async Task<System.Security.Cryptography.X509Certificates.X509Certificate2?> ImportCertificateAsync(SecureString password,
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            return input is null ? null : await certificates.ImportAsync(input, password, cancellationToken);
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task<string> ExportCertificateAsync(System.Security.Cryptography.X509Certificates.X509Certificate2 certificate,
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? output = await dialogs.SelectOutputAsync("certificate.cer", cancellationToken);
+            if (output is null) return "Operation canceled. No certificate was exported.";
+            await certificates.ExportPublicAsync(certificate, output, cancellationToken);
+            return "Public certificate exported. No private key was written.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException)
+        { return "Certificate export failed. Check the destination and permissions; existing files are not overwritten."; }
+        finally { gate.Release(); }
+    }
 
     // WorkspaceService holds its document/certificate lifetime gate before acquiring this service's gate.
     public async Task<string> SignAsync(ProjectDocument document, CancellationToken cancellationToken = default)

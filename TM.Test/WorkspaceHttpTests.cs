@@ -279,6 +279,34 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task CertificatePosts_ValidatePasswordsAndHidePfxDataAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.CertificateHttp.{Guid.NewGuid():N}"); Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "document.xml") };
+            TestFileToolDialogs files = new();
+            using System.Security.Cryptography.X509Certificates.X509Certificate2 source = X509Helper.CreateCACert("TM HTTP certificate", null);
+            using SecureString password = "http-pfx-password".ToCharArray().ToSecureStringAndClear();
+            byte[] pfx = X509Helper.X509ToPfx(source, password);
+            files.Input = Path.Combine(directory, "import.pfx"); files.Output = Path.Combine(directory, "export.cer");
+            await File.WriteAllBytesAsync(files.Input, pfx); CryptographicOperations.ZeroMemory(pfx);
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs, fileDialogs: files);
+            await browser.PostAsync("New", ("Password", "document-password")); await browser.PostAsync("Save");
+            await browser.PostAsync("ImportCertificate", ("CertificatePassword", "http-pfx-password"), ("ConfirmCertificatePassword", "mismatch"), ("ConfirmCertificateReplacement", "true"));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("ImportCertificate", ("CertificatePassword", "http-pfx-password"), ("ConfirmCertificatePassword", "http-pfx-password"), ("ConfirmCertificateReplacement", "true"), ("SourcePath", "ignored"));
+            Assert.IsTrue(browser.Html.Contains("unsaved changes", StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("http-pfx-password", StringComparison.Ordinal)); Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
+            await browser.PostAsync("Save"); await browser.PostAsync("ExportCertificate", ("DestinationPath", Path.Combine(directory, "injected")));
+            Assert.IsTrue(browser.Html.Contains("Public certificate exported", StringComparison.Ordinal));
+            Assert.IsFalse(File.Exists(Path.Combine(directory, "injected")));
+            Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [TestMethod]
     public async Task HmacPosts_CreateVerifyAndRejectMismatchWithoutDisclosingPathsAsync()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"TM.HmacHttp.{Guid.NewGuid():N}");

@@ -147,6 +147,24 @@ Document password change is now implemented in the following slice; remaining to
 - Certificate import/export, signer identity/key distribution, revocation, timestamping and long-term trust remain pending. CMS validity is not a trusted identity assertion.
 - Legacy transfer workflows remain pending. Tasks 04/05 and native acceptance remain incomplete; WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
 
+## Signing certificate import and public export
+
+### Delivered
+- Compatible PFX import retains jnUtil's exportable private-key loading behavior, enforces a 16 MiB input boundary, and refuses certificates without a private key. Import changes only the active document signing identity; it does not modify OS certificate stores or existing signatures.
+- Certificate replacement requires a saved, clean, unlocked current document, a matching bounded PFX password pair and explicit acknowledgement. The replacement is fully loaded before assignment; the previous certificate is disposed only after successful replacement. A successful import marks the document dirty and requires saving.
+- Public certificate export uses the legacy DER `.cer` format only. It requires a saved, clean document and an existing signing certificate, stages publication beside the destination, and refuses existing output. Export never generates a certificate or exports a PFX/private key.
+- Native dialogs provide all certificate paths. Browser-supplied paths are ignored; Razor clears the PFX password fields and generic statuses omit paths, passwords, certificate contents, subjects and serial numbers.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, zero failures (not a clean rebuild). Checked source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **170 passed, 0 failed, 0 skipped**.
+- Added coverage verifies PFX/CER interoperability with legacy jnUtil helpers, malformed/oversized PFX rejection, missing-private-key rejection, cancellation, staging cleanup, no-overwrite output preservation, saved/dirty/locked/stale workspace guards, explicit replacement acknowledgement, native dialog serialization, session/origin/antiforgery checks, ignored browser paths and PFX/path/certificate non-disclosure.
+
+### Outstanding and next work
+- Manually validate native PFX/CER dialogs, incorrect-password UX, certificate/key policies, cross-machine signer trust, certificates from external issuers, Unicode paths, permissions and shutdown using disposable synthetic certificates.
+- Importing a PFX makes its private key available to the document process for compatible CMS signing. PFX password/private-key handling, certificate trust, chain policy, revocation, timestamping, key escrow and backup remain user/environment responsibilities. Managed-password and buffer clearing are best effort; deletion is not secure erasure.
+- Legacy transfer workflows remain pending. Tasks 04/05 and native acceptance remain incomplete; WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
+
 ## Public-key file encryption and decryption
 
 ### Delivered

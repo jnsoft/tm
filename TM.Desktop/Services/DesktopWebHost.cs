@@ -60,6 +60,7 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<AccountFileService>();
         builder.Services.AddSingleton<PublicKeyFileService>();
         builder.Services.AddSingleton<DocumentSignatureService>();
+        builder.Services.AddSingleton<DocumentCertificateService>();
         builder.Services.AddSingleton<FileToolsService>();
         if (clipboard is null) builder.Services.AddSingleton<INativeClipboard, WindowsNativeClipboard>();
         else builder.Services.AddSingleton(clipboard);

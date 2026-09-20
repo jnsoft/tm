@@ -22,7 +22,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto));
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto), new DocumentCertificateService());
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
@@ -498,6 +498,39 @@ public sealed class WorkspaceServiceTests
             Assert.IsTrue((await locking).IsLocked);
         }
         finally { fileDialogs.ReleaseInput.TrySetResult(); }
+    }
+
+    [TestMethod]
+    public async Task CertificateImportExport_RequireSavedCurrentDocumentAndPreserveStateAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ImportCertificate));
+        await NewAsync(); dialogs.SavePath = Path.Combine(directory, "cert.xml");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportCertificate));
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportCertificate));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ImportCertificate, command =>
+        {
+            command.CertificatePassword = command.ConfirmCertificatePassword = "pfx-password";
+        }));
+        using System.Security.Cryptography.X509Certificates.X509Certificate2 source = X509Helper.CreateCACert("TM imported certificate", null);
+        using SecureString password = "pfx-password".ToCharArray().ToSecureStringAndClear();
+        byte[] pfx = X509Helper.X509ToPfx(source, password);
+        fileDialogs.Input = Path.Combine(directory, "import.pfx"); fileDialogs.Output = Path.Combine(directory, "export.cer");
+        await File.WriteAllBytesAsync(fileDialogs.Input, pfx); CryptographicOperations.ZeroMemory(pfx);
+        WorkspaceViewModel imported = await SendAsync(WorkspaceAction.ImportCertificate, command =>
+        {
+            command.CertificatePassword = command.ConfirmCertificatePassword = "pfx-password";
+            command.ConfirmCertificateReplacement = true;
+        });
+        Assert.IsTrue(imported.IsDirty); Assert.AreEqual(saved.Revision + 1, imported.Revision);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportCertificate));
+        saved = await SendAsync(WorkspaceAction.Save);
+        WorkspaceViewModel exported = await SendAsync(WorkspaceAction.ExportCertificate);
+        Assert.AreEqual(saved.Revision, exported.Revision);
+        using System.Security.Cryptography.X509Certificates.X509Certificate2 publicCertificate = new(await File.ReadAllBytesAsync(fileDialogs.Output));
+        Assert.IsFalse(publicCertificate.HasPrivateKey);
+        await SendAsync(WorkspaceAction.Lock);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportCertificate));
     }
 
     [TestMethod]

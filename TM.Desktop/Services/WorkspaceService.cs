@@ -36,6 +36,8 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
         command.Password ??= "";
         command.NewPassword ??= "";
         command.ConfirmNewPassword ??= "";
+        command.CertificatePassword ??= "";
+        command.ConfirmCertificatePassword ??= "";
         command.Secret ??= "";
         command.PeerPublicKey ??= "";
         command.Filter ??= "";
@@ -48,6 +50,27 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.ImportCertificate:
+                    ProjectDocument importDocument = RequireDocument();
+                    if (path is null || dirty) throw new InvalidOperationException("Save the document before importing a signing certificate.");
+                    if (!command.ConfirmCertificateReplacement || string.IsNullOrEmpty(command.CertificatePassword) ||
+                        !string.Equals(command.CertificatePassword, command.ConfirmCertificatePassword, StringComparison.Ordinal))
+                        throw new InvalidOperationException("Enter matching PFX passwords and confirm replacing the document signing certificate.");
+                    using (SecureString pfxPassword = SecurePassword(command.CertificatePassword))
+                    {
+                        System.Security.Cryptography.X509Certificates.X509Certificate2? replacement = await fileTools.ImportCertificateAsync(pfxPassword, cancellationToken);
+                        if (replacement is null) return Snapshot();
+                        var previous = importDocument.Security.CaCertificate;
+                        importDocument.Security.CaCertificate = replacement;
+                        previous?.Dispose();
+                    }
+                    dirty = true; revision++;
+                    return Snapshot() with { Message = "Signing certificate imported. Save the document before signing files." };
+                case WorkspaceAction.ExportCertificate:
+                    ProjectDocument exportDocument = RequireDocument();
+                    if (path is null || dirty) throw new InvalidOperationException("Save the document before exporting its public certificate.");
+                    var exportCertificate = exportDocument.Security.CaCertificate ?? throw new InvalidOperationException("Generate or import a signing certificate first.");
+                    return Snapshot() with { Message = await fileTools.ExportCertificateAsync(exportCertificate, cancellationToken) };
                 case WorkspaceAction.GenerateCertificate:
                     ProjectDocument certificateDocument = RequireDocument();
                     if (path is null || dirty) throw new InvalidOperationException("Save the document before generating its signing certificate.");

@@ -21,7 +21,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto));
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto));
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
@@ -497,6 +497,48 @@ public sealed class WorkspaceServiceTests
             Assert.IsTrue((await locking).IsLocked);
         }
         finally { fileDialogs.ReleaseInput.TrySetResult(); }
+    }
+
+    [TestMethod]
+    public async Task Hmac_RequiresSavedCurrentDocumentAndPreservesStateAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac));
+        await NewAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac));
+        dialogs.SavePath = Path.Combine(directory, "hmac-document.xml");
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(new() { Action = WorkspaceAction.Hmac, Revision = saved.Revision - 1 }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac, command => command.HmacAlgorithm = (HmacAlgorithm)999));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac, command => command.HmacOperation = (HmacOperation)999));
+        Assert.AreEqual(0, fileDialogs.InputCalls);
+        WorkspaceViewModel canceled = await SendAsync(WorkspaceAction.Hmac);
+        Assert.AreEqual(saved.Revision, canceled.Revision);
+        fileDialogs.Input = Path.Combine(directory, "hmac-source");
+        fileDialogs.Output = Path.Combine(directory, "hmac-sidecar");
+        await File.WriteAllTextAsync(fileDialogs.Input, "hmac-content");
+        WorkspaceViewModel created = await SendAsync(WorkspaceAction.Hmac);
+        Assert.IsFalse(created.IsDirty);
+        Assert.AreEqual(saved.Revision, created.Revision);
+        Assert.IsNull(created.RevealedPassword);
+        fileDialogs.Inputs.Enqueue(fileDialogs.Input);
+        fileDialogs.Inputs.Enqueue(fileDialogs.Output);
+        WorkspaceViewModel verified = await SendAsync(WorkspaceAction.Hmac, command => command.HmacOperation = HmacOperation.Verify);
+        Assert.AreEqual("HMAC verified using this document key.", verified.Message);
+        fileDialogs.InputEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.ReleaseInput = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.Input = null;
+        Task<WorkspaceViewModel> pending = workspace.ExecuteAsync(new() { Action = WorkspaceAction.Hmac, Revision = saved.Revision });
+        try
+        {
+            await fileDialogs.InputEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task<WorkspaceViewModel> locking = workspace.ExecuteAsync(new() { Action = WorkspaceAction.Lock, Revision = saved.Revision });
+            Assert.IsFalse(locking.IsCompleted);
+            fileDialogs.ReleaseInput.TrySetResult();
+            await pending;
+            Assert.IsTrue((await locking).IsLocked);
+        }
+        finally { fileDialogs.ReleaseInput.TrySetResult(); }
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac));
     }
 
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");

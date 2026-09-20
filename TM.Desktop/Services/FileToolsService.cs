@@ -6,7 +6,7 @@ using TM.Models;
 namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
-    DocumentFileService documentFiles) : IDisposable
+    DocumentFileService documentFiles, DocumentHmacService hmacFiles) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
@@ -87,6 +87,38 @@ public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs 
             or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
         {
             return "Document-key file operation failed. Check the document, input format and permissions, and choose a new output file.";
+        }
+        finally { gate.Release(); }
+    }
+
+    // WorkspaceService holds its lifetime gate before acquiring this service's gate.
+    public async Task<string> ExecuteHmacAsync(ProjectDocument document, HmacOperation operation, HmacAlgorithm algorithm,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(operation) || !Enum.IsDefined(algorithm)) return "Choose a supported HMAC operation and algorithm.";
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            if (input is null) return "Operation canceled. No files were changed.";
+            cancellationToken.ThrowIfCancellationRequested();
+            if (operation is HmacOperation.Verify)
+            {
+                string? sidecar = await dialogs.SelectInputAsync(cancellationToken);
+                if (sidecar is null) return "Operation canceled. No files were changed.";
+                return await hmacFiles.VerifyAsync(document, algorithm, input, sidecar, cancellationToken)
+                    ? "HMAC verified using this document key."
+                    : "HMAC did not match. Check the file, sidecar, algorithm and original document key.";
+            }
+            string? output = await dialogs.SelectOutputAsync(Path.GetFileName(input) + ".HMAC_" + algorithm.ToString().ToUpperInvariant(), cancellationToken);
+            if (output is null) return "Operation canceled. No files were changed.";
+            await hmacFiles.CreateAsync(document, algorithm, input, output, cancellationToken);
+            return "HMAC sidecar created. The source file was not changed.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or FormatException
+            or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            return "HMAC operation failed. Check the sidecar format, algorithm, document and file permissions. Existing files are not overwritten.";
         }
         finally { gate.Release(); }
     }

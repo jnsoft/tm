@@ -56,6 +56,28 @@
                     <button disabled="@Model.IsDirty">Choose files and run with document key</button>
                 </form>
             </details>
+            <details>
+                <summary>Document-key HMAC</summary>
+                <p>Save first. HMAC verifies shared-key integrity, not a public signer identity. Password changes rotate this key; retain the original document/password for old sidecars.</p>
+                <p>Select the data file first. For verification, select its existing HMAC sidecar second and choose the original algorithm. Creating a sidecar never overwrites an existing file.</p>
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <input type="hidden" name="Input.Action" value="Hmac" />
+                    <label>HMAC operation <select name="Input.HmacOperation">
+                        <option value="Create">Create HMAC sidecar</option>
+                        <option value="Verify">Verify HMAC sidecar</option>
+                    </select></label>
+                    <label>HMAC algorithm <select name="Input.HmacAlgorithm">
+                        <option value="Sha256">SHA-256</option>
+                        <option value="Sha384">SHA-384</option>
+                        <option value="Sha512">SHA-512</option>
+                        <option value="Md5">MD5 (legacy)</option>
+                        <option value="Sha1">SHA-1 (legacy)</option>
+                    </select></label>
+                    <button disabled="@Model.IsDirty">Choose files and run HMAC</button>
+                </form>
+            </details>
         <div class="workspace-grid">
             <nav aria-label="Projects and tasks">
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">

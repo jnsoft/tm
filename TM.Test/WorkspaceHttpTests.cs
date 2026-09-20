@@ -277,6 +277,56 @@ public sealed class WorkspaceHttpTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [TestMethod]
+    public async Task HmacPosts_CreateVerifyAndRejectMismatchWithoutDisclosingPathsAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.HmacHttp.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "document.xml") };
+            TestFileToolDialogs files = new() { Input = Path.Combine(directory, "data"), Output = Path.Combine(directory, "sidecar") };
+            await File.WriteAllTextAsync(files.Input, "synthetic-hmac-data");
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs, fileDialogs: files);
+            await browser.PostAsync("New", ("Password", "test-password"));
+            await browser.PostAsync("Hmac");
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("Save");
+            string revision = browser.Revision;
+            await browser.PostAsync("Hmac", ("HmacAlgorithm", "999"));
+            await browser.PostAsync("Hmac", ("HmacOperation", "invalid"));
+            await browser.PostAsync("Hmac", ("Revision", "0"));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("Hmac", ("SourcePath", "ignored"), ("DestinationPath", Path.Combine(directory, "injected")));
+            Assert.IsTrue(browser.Html.Contains("HMAC sidecar created", StringComparison.Ordinal));
+            Assert.AreEqual(revision, browser.Revision);
+            Assert.IsFalse(File.Exists(Path.Combine(directory, "injected")));
+            await VerifyAsync("HMAC verified");
+            await File.WriteAllTextAsync(files.Input, "changed");
+            await VerifyAsync("HMAC did not match");
+            await File.WriteAllTextAsync(files.Output, "invalid-sidecar");
+            await VerifyAsync("HMAC operation failed");
+            files.Inputs.Enqueue(files.Input); files.Inputs.Enqueue(null);
+            await browser.PostAsync("Hmac", ("HmacOperation", "Verify"));
+            Assert.IsTrue(browser.Html.Contains("Operation canceled", StringComparison.Ordinal));
+            await browser.PostAsync("Lock");
+            int calls = files.InputCalls;
+            await browser.PostAsync("Hmac");
+            Assert.AreEqual(calls, files.InputCalls);
+
+            async Task VerifyAsync(string expected)
+            {
+                files.Inputs.Enqueue(files.Input); files.Inputs.Enqueue(files.Output);
+                await browser.PostAsync("Hmac", ("HmacOperation", "Verify"));
+                Assert.IsTrue(browser.Html.Contains(expected, StringComparison.Ordinal));
+                Assert.AreEqual(revision, browser.Revision);
+                Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
+                Assert.IsFalse(browser.Html.Contains("synthetic-hmac-data", StringComparison.Ordinal));
+            }
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private static string RevealedSecret(string html)
     {
         Match match = Regex.Match(html, "<output data-secret>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));

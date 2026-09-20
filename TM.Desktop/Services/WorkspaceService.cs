@@ -47,6 +47,14 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.Hmac:
+                    ProjectDocument hmacDocument = RequireDocument();
+                    if (path is null || dirty)
+                        throw new InvalidOperationException("Save the document and all password changes before using its HMAC key.");
+                    if (!Enum.IsDefined(command.HmacOperation) || !Enum.IsDefined(command.HmacAlgorithm))
+                        throw new InvalidOperationException("Choose a supported HMAC operation and algorithm.");
+                    string hmacMessage = await fileTools.ExecuteHmacAsync(hmacDocument, command.HmacOperation, command.HmacAlgorithm, cancellationToken);
+                    return Snapshot() with { Message = hmacMessage };
                 case WorkspaceAction.DocumentFile:
                     ProjectDocument fileDocument = RequireDocument();
                     if (path is null || dirty)

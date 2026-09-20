@@ -128,3 +128,24 @@ Document password change is now implemented in the following slice; remaining to
 - Manual native dialogs, large-file behavior, request cancellation and shutdown while legacy crypto runs remain acceptance items. Synchronous legacy work must finish before cancellation can prevent publication; document locking waits for the operation. Staged plaintext deletion is not secure erasure.
 - Retains the existing file format; wrong-document rejection tests are not proof of comprehensive ciphertext tamper authentication. Keep the old document/password when rotating keys if external encrypted files still depend on it.
 - WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
+
+## Document-key HMAC creation and verification
+
+### Delivered
+- Streaming HMAC using WPF's `HMAC` derivation context, 32-byte salt and 64-byte derived key. SHA-256 is the default; SHA-384/SHA-512 and explicitly labeled legacy MD5/SHA-1 preserve interoperability.
+- Sidecars retain grouped uppercase hex plus Base64 salt. Verification bounds sidecar input to 4096 bytes, validates encoding/structure/MAC/salt lengths and uses fixed-time comparison. Derived key buffers are cleared on exit.
+- Creation stages output beside the destination and publishes without overwrite; source files and existing outputs are retained. Verification does not modify either input.
+- Native selection only; browser commands carry allowlisted operations/algorithms, not paths. Saved, clean, unlocked and revision checks precede dialogs. Workspace and file-tool gates protect document/key lifetime through completion; results omit paths and secrets.
+- UI explains shared-key integrity, not public signatures, and warns that password changes affect document-derived keys. Keep the original document/password for dependent sidecars.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, zero failures (not a clean rebuild). Checked source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **148 passed, 0 failed, 0 skipped**.
+- Nine added cases cover five-algorithm bidirectional WPF sidecar interoperability, altered data/MAC/salt/wrong-document mismatch, malformed/oversized sidecars, BOM/CRLF support, no-overwrite/source preservation, pre-canceled creation, workspace guards/state preservation and deterministic lock serialization, plus HTTP creation/verification/mismatch/malformed-input handling and path non-disclosure.
+- Existing frozen document compatibility and native startup/basic-editing smoke tests also pass. Automated HMAC dialog coverage uses fakes and disposable synthetic files, not real user documents.
+
+### Outstanding and next work
+- Manually exercise HMAC controls/native selection, cancellation, Unicode paths, large files, permissions and shutdown during an operation. Native smoke does not cover the new HMAC controls; deterministic mid-stream cancellation and destination-race fault injection remain follow-up coverage.
+- HMAC proves integrity only to holders of the shared key; it is not a public-key signature or encryption. Legacy algorithms are compatibility options, not security recommendations. Temporary-file cleanup is deletion, not secure erasure.
+- Account-bound/public-key file operations, signing/certificates and compatibility transfers remain pending. Tasks 04/05 remain incomplete, with release work unstarted.
+- WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.

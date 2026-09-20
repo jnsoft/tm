@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TM\TM.csproj" />
+    <ProjectReference Include="..\TM.Desktop\TM.Desktop.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

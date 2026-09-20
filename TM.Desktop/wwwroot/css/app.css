@@ -1,0 +1,7 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: Canvas; color: CanvasText; }
+main { max-width: 76rem; margin: auto; padding: 1.5rem; }
+button, input, select, textarea { font: inherit; }
+button { padding: .5rem .85rem; cursor: pointer; }
+:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
+form { margin-block: 1rem; }

@@ -15,6 +15,7 @@ public static class DesktopApplication
             try
             {
                 PhotinoWindow window = new PhotinoWindow()
+                    .SetLogVerbosity(0)
                     .SetTitle("TM — Photino")
                     .SetUseOsDefaultSize(false)
                     .SetSize(1100, 760)
@@ -29,7 +30,6 @@ public static class DesktopApplication
                     .SetNotificationsEnabled(false)
                     .SetWebSecurityEnabled(true)
                     .SetIgnoreCertificateErrorsEnabled(false)
-                    .SetLogVerbosity(0)
                     .Load(host.Security.BootstrapUri);
                 window.WaitForClose();
                 completion.TrySetResult();

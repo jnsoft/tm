@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using TM.Desktop.ViewModels;
@@ -34,6 +35,7 @@ public sealed class DesktopWebHost : IAsyncDisposable
             options.AddServerHeader = false;
         });
         builder.Services.AddRazorPages();
+        builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
         builder.Services.AddAntiforgery(options =>
         {
             options.Cookie.Name = "tm-antiforgery-" + Guid.NewGuid().ToString("N");

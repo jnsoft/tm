@@ -42,6 +42,30 @@
             </form>
         </details>
             <details>
+                <summary>Public-key file encryption</summary>
+                <p>Uses this document's ECDH private key and a peer public key to produce the existing AES-GCM file format. Save first. The peer key is not stored or shown after the operation.</p>
+                <p>This is not a signature, sender identity check or public-key trust system. Confirm peer keys independently. Files are limited to 64 MiB for this compatible whole-file format; source files remain unchanged.</p>
+                @if (!Model.IsDirty)
+                {
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <button name="Input.Action" value="GenerateKeys">Generate ECDH key pair</button>
+                    </form>
+                }
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <input type="hidden" name="Input.Action" value="PublicKeyFile" />
+                    <label>Public-key operation <select name="Input.PublicKeyFileOperation">
+                        <option value="Encrypt">Encrypt for peer public key</option>
+                        <option value="Decrypt">Decrypt using sender public key</option>
+                    </select></label>
+                    <label>Peer public key (Base64 SPKI) <textarea name="Input.PeerPublicKey" required maxlength="16384" autocomplete="off"></textarea></label>
+                    <button disabled="@Model.IsDirty">Choose files and run public-key operation</button>
+                </form>
+            </details>
+            <details>
                 <summary>Document-key file encryption</summary>
                 <p>Save this document and any password changes first. Keep a secure copy of this document and its password to recover encrypted files. Changing the document password changes its file key.</p>
                 <p>Source files are retained, including plaintext. Existing output files are refused. Legacy crypto must finish before cancellation, locking or document replacement can complete.</p>

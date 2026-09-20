@@ -4,7 +4,7 @@ using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile }
 
 public sealed class WorkspaceCommand
 {
@@ -12,6 +12,8 @@ public sealed class WorkspaceCommand
     public DocumentFileOperation DocumentFileOperation { get; set; }
     public HmacOperation HmacOperation { get; set; }
     public HmacAlgorithm HmacAlgorithm { get; set; } = HmacAlgorithm.Sha256;
+    public PublicKeyFileOperation PublicKeyFileOperation { get; set; }
+    [StringLength(16384)] public string PeerPublicKey { get; set; } = "";
     public long Revision { get; set; }
     public string? NodeId { get; set; }
     public ProjectItemType NodeType { get; set; }

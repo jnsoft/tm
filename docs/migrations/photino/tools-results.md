@@ -129,6 +129,27 @@ Document password change is now implemented in the following slice; remaining to
 - Retains the existing file format; wrong-document rejection tests are not proof of comprehensive ciphertext tamper authentication. Keep the old document/password when rotating keys if external encrypted files still depend on it.
 - WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
 
+## Public-key file encryption and decryption
+
+### Delivered
+- Preserves WPF/jnUtil compatibility: active document ECDH private key plus peer Base64 SPKI public key derive a shared 32-byte key, and output uses the existing `nonce (12 bytes) || tag (16 bytes) || ciphertext` AES-GCM payload with no filename or key metadata.
+- Requires a saved, clean, unlocked document with generated ECDH keys. Public-key operations and key generation hold the workspace gate through native selection and the awaited operation, so locking/replacement cannot clear the DPAPI-protected private key in use.
+- Peer public-key text is bounded, decoded transiently, cleared after every request and never persisted in workspace snapshots, responses or messages. Invalid peer input returns a safe validation response rather than an HTTP error.
+- Source files remain unchanged. New output is staged beside the selected destination and published without overwrite. Inputs over 64 MiB are refused before allocation because the compatible legacy GCM payload requires whole-file processing; malformed legacy payload parsing is normalized to cryptographic failure.
+- UI explains that ECDH key agreement does not verify sender identity, signatures or trust. It warns that peer keys must be verified independently and that the compatible operation is intentionally limited to 64 MiB.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, zero failures (not a clean rebuild). Edited source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **161 passed, 0 failed, 0 skipped**.
+- Six new cases cover empty/multi-buffer bidirectional jnUtil GCM compatibility, malformed/tampered/wrong-peer rejection, invalid peer data, same/existing/missing output preservation, cancellation, 64 MiB limit, saved/dirty/locked/no-key/stale workspace guards, ECDH key generation, lock serialization, session/origin/antiforgery validation, ignored browser paths and peer/path/content non-disclosure.
+- Validation first exposed legacy malformed-payload `ArgumentException` and invalid Base64 peer-key HTTP 500 behavior. The core now reports malformed decrypt payloads as cryptographic failures, and peer input is validated before Razor response generation. Existing frozen compatibility and native startup/basic-editing tests pass.
+
+### Outstanding and next work
+- Manually validate native dialogs, cross-machine/cross-account exchange, independently verified peer-key workflows, Unicode/large-file boundaries, permissions and shutdown/cancellation using synthetic files. The 64 MiB limit is a Photino UI safety boundary, not a portable streaming replacement for the legacy payload.
+- ECDH agreement alone does not authenticate a sender or recipient. Peer-key substitution, key lifecycle/distribution and signing trust remain caller responsibilities. Temporary plaintext and whole-file buffers are cleared where possible but managed-memory erasure is not guaranteed; staged cleanup is deletion, not secure erasure.
+- Signing/certificates and compatibility transfers remain pending. Tasks 04/05 and native acceptance remain incomplete; release work is unstarted.
+- WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
+
 ## Document-key HMAC creation and verification
 
 ### Delivered

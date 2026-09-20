@@ -6,9 +6,35 @@ using TM.Models;
 namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
-    DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles) : IDisposable
+    DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles,
+    PublicKeyFileService publicKeyFiles) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
+
+    // WorkspaceService holds its document/key lifetime gate before acquiring this service's gate.
+    public async Task<string> ExecutePublicKeyAsync(ProjectDocument document, PublicKeyFileOperation operation,
+        ReadOnlyMemory<byte> peerPublicKey, CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(operation)) return "Choose a supported public-key file operation.";
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            if (input is null) return "Operation canceled. No output was created.";
+            cancellationToken.ThrowIfCancellationRequested();
+            string suffix = operation is PublicKeyFileOperation.Encrypt ? ".aes" : ".decrypted";
+            string? output = await dialogs.SelectOutputAsync(Path.GetFileName(input) + suffix, cancellationToken);
+            if (output is null) return "Operation canceled. No output was created.";
+            await publicKeyFiles.ExecuteAsync(document, operation, peerPublicKey, input, output, cancellationToken);
+            return "Public-key output file created. The source file was retained.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or FormatException
+            or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            return "Public-key file operation failed. Check the peer public key, document keys, input format, file limit and permissions. Existing files are not overwritten.";
+        }
+        finally { gate.Release(); }
+    }
 
     public async Task<string> ExecuteAccountAsync(AccountFileOperation operation, bool acknowledged,
         CancellationToken cancellationToken = default)

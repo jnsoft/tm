@@ -37,6 +37,7 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
         command.NewPassword ??= "";
         command.ConfirmNewPassword ??= "";
         command.Secret ??= "";
+        command.PeerPublicKey ??= "";
         command.Filter ??= "";
         Validator.ValidateObject(command, new ValidationContext(command), validateAllProperties: true);
         await gate.WaitAsync(cancellationToken);
@@ -47,6 +48,33 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.GenerateKeys:
+                    ProjectDocument keyDocument = RequireDocument();
+                    if (path is null || dirty)
+                        throw new InvalidOperationException("Save the document and all password changes before generating ECDH keys.");
+                    crypto.GenerateKeys(keyDocument);
+                    dirty = true;
+                    revision++;
+                    return Snapshot() with { Message = "ECDH key pair generated. Save the document before using its public-key file tools." };
+                case WorkspaceAction.PublicKeyFile:
+                    ProjectDocument publicKeyDocument = RequireDocument();
+                    if (path is null || dirty)
+                        throw new InvalidOperationException("Save the document and all password changes before using its public-key file key.");
+                    if (!publicKeyDocument.IsDiffieHellmanEnabled)
+                        throw new InvalidOperationException("Generate ECDH keys for this document first.");
+                    if (!Enum.IsDefined(command.PublicKeyFileOperation))
+                        throw new InvalidOperationException("Choose a supported public-key file operation.");
+                    byte[]? peerKey = null;
+                    try
+                    {
+                        try { peerKey = command.PeerPublicKey.FromBase64(); }
+                        catch (FormatException error) { throw new InvalidOperationException("Enter a valid peer public key.", error); }
+                        if (peerKey.Length is 0 or > 16384) throw new FormatException("The peer public key is invalid.");
+                        string publicKeyMessage = await fileTools.ExecutePublicKeyAsync(publicKeyDocument,
+                            command.PublicKeyFileOperation, peerKey, cancellationToken);
+                        return Snapshot() with { Message = publicKeyMessage };
+                    }
+                    finally { ProjectCryptoService.ClearArray(ref peerKey); }
                 case WorkspaceAction.Hmac:
                     ProjectDocument hmacDocument = RequireDocument();
                     if (path is null || dirty)

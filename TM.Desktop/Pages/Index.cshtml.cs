@@ -44,6 +44,7 @@ public sealed class IndexModel(ShellViewModel viewModel, WorkspaceService worksp
             Input.NewPassword = "";
             Input.ConfirmNewPassword = "";
             Input.Secret = "";
+            Input.PeerPublicKey = "";
             ModelState.Clear();
         }
         return Request.Headers.ContainsKey("HX-Request") ? Partial("_Workspace", Workspace) : Page();

@@ -74,7 +74,8 @@ public sealed class FileToolsHttpTests
     public async Task CanceledDialogsAndToken_DoNotCreateOutputsAsync()
     {
         TestFileToolDialogs dialogs = new();
-        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(), new DocumentFileService(new ProjectCryptoService()), new DocumentHmacService(new ProjectCryptoService()), new AccountFileService(new TestAccountFileProtection()));
+        ProjectCryptoService crypto = new();
+        using FileToolsService tools = new(new FileUtilityService(), dialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto));
         Assert.IsTrue((await tools.ExecuteAsync(FileUtilityOperation.Sha256)).Contains("canceled", StringComparison.Ordinal));
         Assert.AreEqual(0, dialogs.OutputCalls);
         dialogs.Input = "synthetic.txt";

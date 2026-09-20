@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using TM.Desktop.Services;
 using TM.Desktop.ViewModels;
 using TM.Services;
@@ -21,7 +22,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()));
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto));
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
@@ -539,6 +540,52 @@ public sealed class WorkspaceServiceTests
         }
         finally { fileDialogs.ReleaseInput.TrySetResult(); }
         await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Hmac));
+    }
+
+    [TestMethod]
+    public async Task PublicKeyFiles_RequireSavedCurrentKeyedDocumentAndPreserveStateAsync()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.PublicKeyFile));
+        await NewAsync();
+        dialogs.SavePath = Path.Combine(directory, "public-key.xml");
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.PublicKeyFile));
+        WorkspaceViewModel generated = await SendAsync(WorkspaceAction.GenerateKeys);
+        Assert.IsTrue(generated.IsDirty);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.PublicKeyFile));
+        saved = await SendAsync(WorkspaceAction.Save);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(new() { Action = WorkspaceAction.PublicKeyFile, Revision = saved.Revision - 1 }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.PublicKeyFile, command => command.PublicKeyFileOperation = (PublicKeyFileOperation)999));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.PublicKeyFile, command => command.PeerPublicKey = "invalid"));
+        Assert.AreEqual(0, fileDialogs.InputCalls);
+        using ECDiffieHellman peer = ECDiffieHellman.Create();
+        string peerKey = Convert.ToBase64String(peer.ExportSubjectPublicKeyInfo());
+        WorkspaceViewModel canceled = await SendAsync(WorkspaceAction.PublicKeyFile, command => command.PeerPublicKey = peerKey);
+        Assert.AreEqual(saved.Revision, canceled.Revision);
+        fileDialogs.Input = Path.Combine(directory, "public-source");
+        fileDialogs.Output = Path.Combine(directory, "public-encrypted");
+        await File.WriteAllTextAsync(fileDialogs.Input, "public-key-content");
+        WorkspaceViewModel encrypted = await SendAsync(WorkspaceAction.PublicKeyFile, command => command.PeerPublicKey = peerKey);
+        Assert.IsFalse(encrypted.IsDirty);
+        Assert.IsNull(encrypted.RevealedPassword);
+        Assert.IsFalse(encrypted.Message!.Contains(peerKey, StringComparison.Ordinal));
+        fileDialogs.InputEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.ReleaseInput = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        fileDialogs.Input = null;
+        Task<WorkspaceViewModel> pending = workspace.ExecuteAsync(new()
+        {
+            Action = WorkspaceAction.PublicKeyFile, Revision = saved.Revision, PeerPublicKey = peerKey
+        });
+        try
+        {
+            await fileDialogs.InputEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task<WorkspaceViewModel> locking = workspace.ExecuteAsync(new() { Action = WorkspaceAction.Lock, Revision = saved.Revision });
+            Assert.IsFalse(locking.IsCompleted);
+            fileDialogs.ReleaseInput.TrySetResult();
+            await pending;
+            Assert.IsTrue((await locking).IsLocked);
+        }
+        finally { fileDialogs.ReleaseInput.TrySetResult(); }
     }
 
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");

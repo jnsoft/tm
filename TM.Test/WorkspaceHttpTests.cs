@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using TM.Desktop.Services;
 
@@ -323,6 +324,53 @@ public sealed class WorkspaceHttpTests
                 Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
                 Assert.IsFalse(browser.Html.Contains("synthetic-hmac-data", StringComparison.Ordinal));
             }
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [TestMethod]
+    public async Task PublicKeyFilePosts_RequireSavedKeysAndNeverEchoPeerOrPathsAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.PublicKeyHttp.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "document.xml") };
+            TestFileToolDialogs files = new() { Input = Path.Combine(directory, "data"), Output = Path.Combine(directory, "encrypted") };
+            await File.WriteAllTextAsync(files.Input, "synthetic-public-key-data");
+            using ECDiffieHellman peer = ECDiffieHellman.Create();
+            string peerKey = Convert.ToBase64String(peer.ExportSubjectPublicKeyInfo());
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs, fileDialogs: files);
+            await browser.PostAsync("New", ("Password", "test-password"));
+            await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("Save");
+            await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey));
+            Assert.IsTrue(browser.Html.Contains("Generate ECDH keys", StringComparison.Ordinal));
+            await browser.PostAsync("GenerateKeys");
+            Assert.IsTrue(browser.Html.Contains("unsaved changes", StringComparison.Ordinal));
+            await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("Save");
+            string revision = browser.Revision;
+            foreach ((string name, string value) in new[]
+            {
+                ("PublicKeyFileOperation", "999"), ("PublicKeyFileOperation", "invalid"),
+                ("PeerPublicKey", "invalid"), ("Revision", "0")
+            })
+                await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey), (name, value));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey), ("SourcePath", "ignored"), ("DestinationPath", Path.Combine(directory, "injected")));
+            Assert.IsTrue(browser.Html.Contains("Public-key output file created", StringComparison.Ordinal));
+            Assert.AreEqual(revision, browser.Revision);
+            Assert.IsFalse(File.Exists(Path.Combine(directory, "injected")));
+            foreach (string secret in new[] { peerKey, directory, "synthetic-public-key-data" })
+                Assert.IsFalse(browser.Html.Contains(secret, StringComparison.Ordinal));
+            await browser.PostAsync("Lock");
+            int calls = files.InputCalls;
+            await browser.PostAsync("PublicKeyFile", ("PeerPublicKey", peerKey));
+            Assert.AreEqual(calls, files.InputCalls);
+            Assert.IsFalse(browser.Html.Contains(peerKey, StringComparison.Ordinal));
         }
         finally { Directory.Delete(directory, true); }
     }

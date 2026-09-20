@@ -19,7 +19,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
     }
 
     public static async Task<DesktopWebHost> StartAsync(string contentRoot, CancellationToken cancellationToken = default,
-        IProjectFileDialogs? dialogs = null, INativeClipboard? clipboard = null, IFileToolDialogs? fileDialogs = null)
+        IProjectFileDialogs? dialogs = null, INativeClipboard? clipboard = null, IFileToolDialogs? fileDialogs = null,
+        IAccountFileProtection? accountProtection = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -55,6 +56,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<PasswordFileService>();
         builder.Services.AddSingleton<DocumentFileService>();
         builder.Services.AddSingleton<DocumentHmacService>();
+        builder.Services.AddSingleton<IAccountFileProtection>(accountProtection ?? new WindowsAccountFileProtection());
+        builder.Services.AddSingleton<AccountFileService>();
         builder.Services.AddSingleton<FileToolsService>();
         if (clipboard is null) builder.Services.AddSingleton<INativeClipboard, WindowsNativeClipboard>();
         else builder.Services.AddSingleton(clipboard);

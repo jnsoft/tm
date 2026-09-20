@@ -149,3 +149,24 @@ Document password change is now implemented in the following slice; remaining to
 - HMAC proves integrity only to holders of the shared key; it is not a public-key signature or encryption. Legacy algorithms are compatibility options, not security recommendations. Temporary-file cleanup is deletion, not secure erasure.
 - Account-bound/public-key file operations, signing/certificates and compatibility transfers remain pending. Tasks 04/05 remain incomplete, with release work unstarted.
 - WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
+
+## Windows-account file encryption (EFS)
+
+### Delivered
+- Inspection of installed jnUtil 2.0.2 confirmed account-file helpers call Windows `File.Encrypt`/`File.Decrypt` (EFS), not DPAPI file-blob encryption. The new native boundary retains these calls; document DPAPI and WPF remain unchanged.
+- Creates a staged copy beside a new destination rather than modifying/renaming the source. Validates the resulting encrypted attribute before no-overwrite publication; decryption requires an EFS-encrypted source. Existing destinations and source files are retained.
+- Serializes with other file tools through native selection, async copying and the complete awaited synchronous EFS call. Cancellation prevents publication after the native call returns; cleanup deletes only the known payload and empty staging directory.
+- A separate acknowledged form explains Windows/NTFS/edition/policy requirements, EFS certificate/private-key backup, transparent authorized access, loss of protection on copying/export, retained plaintext and deletion versus secure erasure. The `.enc` suffix is not a portable ciphertext format.
+- Commands contain only operation/acknowledgement; paths come from native dialogs. Invalid commands are rejected before dialogs, and generic results/errors do not echo paths or content. No document key/password is required.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, zero failures (not a clean rebuild). Edited source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **155 passed, 0 failed, 0 skipped**.
+- Seven added cases cover empty/multi-buffer copying, protection-boundary calls, source preservation, invalid/same/existing/missing inputs, plain-source decryption rejection, pre-cancellation, native failure/no-op rejection, destination-race preservation, cancellation during protection, staging cleanup, HTTP session/antiforgery/acknowledgement/enum validation, ignored browser paths, error non-disclosure and cross-tool serialization.
+- All new EFS tests use an injected fake; no real EFS encryption/certificate operations are executed. These are orchestration/safety tests, not native encryption or account-isolation tests. Existing Windows startup/basic-editing smoke and frozen compatibility tests pass.
+
+### Outstanding and next work
+- Manual acceptance must verify EFS state after publication, native encrypt/decrypt round trips, Unicode/large files, unsupported volumes/Windows editions/policy, denied-account access, EFS certificate recovery, cancellation/shutdown and native-dialog UX using disposable synthetic files.
+- Copying creates temporary plaintext; inherited directory permissions apply. The original plaintext remains, cleanup is not secure erasure, and EFS is transparent to authorized users/recovery agents. No portable encrypted-attachment or comprehensive account-isolation claim is made.
+- Public-key file operations, signing/certificates and compatibility transfers remain pending. Tasks 04/05 and native acceptance remain incomplete; release work is unstarted.
+- WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.

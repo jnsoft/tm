@@ -21,7 +21,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto));
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()));
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 

@@ -6,9 +6,34 @@ using TM.Models;
 namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
-    DocumentFileService documentFiles, DocumentHmacService hmacFiles) : IDisposable
+    DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
+
+    public async Task<string> ExecuteAccountAsync(AccountFileOperation operation, bool acknowledged,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(operation) || !acknowledged)
+            return "Choose a supported EFS operation and acknowledge its Windows/account and plaintext limitations.";
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            if (input is null) return "Operation canceled. No output was created.";
+            cancellationToken.ThrowIfCancellationRequested();
+            string suffix = operation is AccountFileOperation.Encrypt ? ".enc" : ".decrypted";
+            string? output = await dialogs.SelectOutputAsync(Path.GetFileName(input) + suffix, cancellationToken);
+            if (output is null) return "Operation canceled. No output was created.";
+            await accountFiles.ExecuteAsync(operation, input, output, cancellationToken);
+            return "Output file created with the requested Windows EFS state. The source file was retained.";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or System.Security.Cryptography.CryptographicException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            return "EFS operation failed. Check Windows/EFS support, filesystem, permissions and access to the encryption certificate. Choose a new output file; existing files are not overwritten.";
+        }
+        finally { gate.Release(); }
+    }
 
     public async Task<string> ExecuteAsync(FileUtilityOperation operation, CancellationToken cancellationToken = default)
     {

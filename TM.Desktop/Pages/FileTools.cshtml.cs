@@ -10,9 +10,20 @@ public sealed class FileToolsModel(FileToolsService tools) : PageModel
 {
     [BindProperty] public FileUtilityOperation Operation { get; set; } = FileUtilityOperation.Sha256;
     [BindProperty] public PasswordFileOperation PasswordOperation { get; set; }
+    [BindProperty] public AccountFileOperation AccountOperation { get; set; }
+    [BindProperty] public bool AcknowledgeAccountLimits { get; set; }
     [BindProperty, StringLength(4096)] public string FilePassword { get; set; } = "";
     [BindProperty, StringLength(4096)] public string ConfirmFilePassword { get; set; } = "";
     public string StatusMessage { get; private set; } = "Ready.";
+
+    public async Task<IActionResult> OnPostAccountAsync(CancellationToken cancellationToken)
+    {
+        StatusMessage = ModelState.IsValid && Enum.IsDefined(AccountOperation)
+            ? await tools.ExecuteAccountAsync(AccountOperation, AcknowledgeAccountLimits, cancellationToken)
+            : "Choose a supported EFS operation and acknowledge its limitations.";
+        ModelState.Clear();
+        return Request.Headers.ContainsKey("HX-Request") ? Partial("_FileTools", StatusMessage) : Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {

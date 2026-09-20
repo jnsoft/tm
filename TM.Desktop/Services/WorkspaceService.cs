@@ -86,6 +86,13 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                         break;
                     }
                     finally { ProjectCryptoService.ClearArray(ref inputTransferKey); }
+                case WorkspaceAction.Move:
+                    NodeModel moving = FindNode(command.NodeId);
+                    NodeModel? target = command.PromoteToRoot ? null : FindNode(command.TargetNodeId);
+                    RequireDocument().MoveNode(moving, target);
+                    selectedId = moving.Id;
+                    dirty = true;
+                    break;
                 case WorkspaceAction.ImportCertificate:
                     ProjectDocument importDocument = RequireDocument();
                     if (path is null || dirty) throw new InvalidOperationException("Save the document before importing a signing certificate.");

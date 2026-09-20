@@ -299,6 +299,27 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task MovePosts_UseServerOwnedTargetsAndRejectInvalidMovesAsync()
+    {
+        await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());
+        await browser.PostAsync("New", ("Password", "test-password"));
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "First"));
+        string first = browser.EditorId;
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Second"));
+        string second = browser.EditorId;
+        await browser.PostAsync("Add", ("NodeType", "Milestone"), ("NodeId", first), ("Name", "Milestone"));
+        string milestone = browser.EditorId;
+        await browser.PostAsync("Move", ("NodeId", milestone), ("TargetNodeId", second), ("PromoteToRoot", "false"), ("TargetNodeText", "injected"));
+        Assert.IsTrue(browser.Html.Contains("Project: Second", StringComparison.Ordinal));
+        Assert.IsTrue(browser.Html.Contains("Milestone: Milestone", StringComparison.Ordinal));
+        Assert.IsFalse(browser.Html.Contains("injected", StringComparison.Ordinal));
+        await browser.PostAsync("Move", ("NodeId", second), ("TargetNodeId", milestone));
+        Assert.IsTrue(browser.Html.Contains("cannot be moved", StringComparison.Ordinal));
+        await browser.PostAsync("Move", ("NodeId", milestone), ("PromoteToRoot", "true"));
+        Assert.IsTrue(browser.Html.Contains("Project: Milestone", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task TreeNavigationPosts_RenderServerOwnedExpansionAndFocusAsync()
     {
         await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());

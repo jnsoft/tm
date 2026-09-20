@@ -174,4 +174,36 @@ public class ProjectDocument : ObservableObject
             node.IsExpanded = false;
         }
     }
+
+    /// <summary>Moves a node using the legacy drag/drop conversion rules.</summary>
+    public void MoveNode(NodeModel source, NodeModel? target)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (target is not null)
+        {
+            if (source.Id == target.Id || target.IsChildOf(source) ||
+                (target.NodeType is ProjectItemType.Protected && source.NodeType is not ProjectItemType.Protected))
+                throw new InvalidOperationException("That item cannot be moved to the selected target.");
+
+            NodeModel moved = source.DeepCopy(!source.IsProtected, target);
+            DeleteNode(source);
+            target.Nodes.Add(moved);
+            target.IsExpanded = true;
+            target.UpdateProgress();
+            target.UpdateParentProgress();
+            moved.CheckForNewDueDate();
+        }
+        else
+        {
+            if (source.IsProtected)
+                throw new InvalidOperationException("Protected items cannot be promoted to root projects.");
+            NodeModel moved = source.DeepCopy(convertTypes: true);
+            DeleteNode(source);
+            AddNode(moved);
+            RefreshTodos();
+            return;
+        }
+
+        RefreshTodos();
+    }
 }

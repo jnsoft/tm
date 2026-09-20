@@ -60,3 +60,25 @@ Commit this tested slice on photino-04-ui, then create photino-05-tools from tha
 - Drag/drop or an accessible move/reparenting equivalent, keyboard shortcuts/navigation and broader accessibility remain outstanding. Browser-side expansion changes before a server update are not persisted.
 - Manually validate keyboard focus movement, screen readers, high-DPI layout, pointer/touch behavior, native dialogs and dirty-close behavior in the Photino window.
 - Task 05 code/test implementation is complete but native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.
+
+## Accessible tree move research
+
+- Legacy WPF drag/drop validates that source and target differ, rejects moves into a source descendant, and rejects non-protected nodes targeting protected nodes. A move into a node deep-copies non-protected source types into the valid child type, expands/recalculates the target and applies its due-date boundary; moving a non-protected node with no target promotes it to a root project.
+- The Photino replacement will provide an explicit selected-item move target rather than pointer drag/drop. It must enforce the same type/cycle rules before changing the document, retain the selection, update tree/todo state and use a deliberate root-project option only for non-protected items.
+
+## Accessible tree move parity checkpoint
+
+### Delivered
+- Added a serialized, keyboard-accessible move/reparent workflow for the selected tree item. Users choose an existing target from a form control, or explicitly promote a non-protected item to a new root project.
+- Preserves legacy move semantics: non-protected nodes are converted to the valid type under their new parent, target expansion/progress and inherited due-date constraints are updated, and the moved item remains selected.
+- Rejects self moves, descendant cycles, non-protected moves into protected targets and protected-item root promotion. The move is performed through the document model instead of pointer-specific UI behavior.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **180 passed, 0 failed, 0 skipped**.
+- Added service and HTTP coverage for reparenting, root promotion, type conversion, selection preservation, invalid target rejection, and ignored browser-supplied target text.
+
+### Remaining UI and release work
+- Pointer drag/drop is intentionally replaced by this accessible move workflow. Keyboard shortcuts/navigation, broader accessibility, and manual interaction acceptance remain outstanding.
+- Manually validate target-list usability for large trees, keyboard/screen-reader flow, high-DPI layout, pointer/touch behavior, native dialogs and dirty-close behavior in the Photino window.
+- Task 05 code/test implementation is complete but native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.

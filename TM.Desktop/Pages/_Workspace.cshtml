@@ -224,6 +224,38 @@
                         <input type="hidden" name="Input.NodeId" value="@editor.Id" />
                         <button name="Input.Action" value="FocusSelected">Focus selected item in tree</button>
                     </form>
+                    <details>
+                        <summary>Move selected item</summary>
+                        <p>Move to an existing item or promote a non-protected item to a new root project. Moving into itself, one of its descendants, or a protected item is refused.</p>
+                        <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                            <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                            <label>Move target
+                                <select name="Input.TargetNodeId" required>
+                                    <option value="">Choose target</option>
+                                    @foreach (TreeItemViewModel candidate in Model.Tree.SelectMany(node => Flatten(node)))
+                                    {
+                                        @if (candidate.Id != editor.Id)
+                                        {
+                                            <option value="@candidate.Id">@candidate.Type: @candidate.Text</option>
+                                        }
+                                    }
+                                </select>
+                            </label>
+                            <button name="Input.Action" value="Move">Move item</button>
+                        </form>
+                        @if (editor.Type is not ProjectItemType.Protected)
+                        {
+                            <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                                <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                                <input type="hidden" name="Input.PromoteToRoot" value="true" />
+                                <button name="Input.Action" value="Move">Promote to root project</button>
+                            </form>
+                        }
+                    </details>
                     <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="editor" data-editor>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />
@@ -292,3 +324,12 @@
         </div>
     }
 </section>
+
+@functions {
+    private static IEnumerable<TreeItemViewModel> Flatten(TreeItemViewModel node)
+    {
+        yield return node;
+        foreach (TreeItemViewModel child in node.Children.SelectMany(Flatten))
+            yield return child;
+    }
+}

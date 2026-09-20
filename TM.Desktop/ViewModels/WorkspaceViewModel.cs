@@ -4,7 +4,7 @@ using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, ExpandTree, CollapseTree, FocusSelected, SortByName, SortByDate, AppendTimestamp, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile, ImportCertificate, ExportCertificate, ExportTransfer, ImportTransfer }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Move, Filter, ExpandTree, CollapseTree, FocusSelected, SortByName, SortByDate, AppendTimestamp, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile, ImportCertificate, ExportCertificate, ExportTransfer, ImportTransfer }
 
 public sealed class WorkspaceCommand
 {
@@ -16,6 +16,8 @@ public sealed class WorkspaceCommand
     [StringLength(16384)] public string PeerPublicKey { get; set; } = "";
     public long Revision { get; set; }
     public string? NodeId { get; set; }
+    public string? TargetNodeId { get; set; }
+    public bool PromoteToRoot { get; set; }
     public ProjectItemType NodeType { get; set; }
     [StringLength(256)] public string Name { get; set; } = "";
     [StringLength(32000)] public string Description { get; set; } = "";

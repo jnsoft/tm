@@ -606,6 +606,50 @@ public sealed class WorkspaceServiceTests
     }
 
     [TestMethod]
+    public async Task Move_ReparentsPromotesAndRejectsInvalidTargetsAsync()
+    {
+        await NewAsync();
+        WorkspaceViewModel first = await AddAsync(ProjectItemType.Project, "First");
+        WorkspaceViewModel second = await AddAsync(ProjectItemType.Project, "Second");
+        WorkspaceViewModel milestone = await AddAsync(ProjectItemType.Milestone, "Milestone", first.Editor!.Id);
+        WorkspaceViewModel task = await AddAsync(ProjectItemType.Task, "Task", milestone.Editor!.Id);
+        WorkspaceViewModel moved = await SendAsync(WorkspaceAction.Move, command =>
+        {
+            command.NodeId = milestone.Editor!.Id;
+            command.TargetNodeId = second.Editor!.Id;
+        });
+        Assert.AreEqual("Second", moved.Tree.Single(node => node.Text == "Second").Text);
+        TreeItemViewModel movedChild = moved.Tree.Single(node => node.Text == "Second").Children.Single();
+        Assert.AreEqual(ProjectItemType.Milestone, movedChild.Type);
+        Assert.AreEqual("Milestone", movedChild.Text);
+        Assert.IsTrue(movedChild.Selected);
+        Assert.IsTrue(moved.IsDirty);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Move, command =>
+        {
+            command.NodeId = second.Editor!.Id;
+            command.TargetNodeId = movedChild.Id;
+        }));
+        WorkspaceViewModel promoted = await SendAsync(WorkspaceAction.Move, command =>
+        {
+            command.NodeId = movedChild.Id;
+            command.PromoteToRoot = true;
+        });
+        Assert.IsTrue(promoted.Tree.Any(node => node.Text == "Milestone" && node.Type is ProjectItemType.Project));
+        await AddAsync(ProjectItemType.Protected, "Credential", first.Editor!.Id);
+        string protectedId = (await workspace.SnapshotAsync()).Editor!.Id;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Move, command =>
+        {
+            command.NodeId = protectedId;
+            command.PromoteToRoot = true;
+        }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.Move, command =>
+        {
+            command.NodeId = second.Editor!.Id;
+            command.TargetNodeId = protectedId;
+        }));
+    }
+
+    [TestMethod]
     public async Task Signing_RequiresSavedCurrentCertificateDocumentAndHoldsLifetimeAsync()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));

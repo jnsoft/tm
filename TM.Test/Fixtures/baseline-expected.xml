@@ -1,0 +1,147 @@
+<project_store>
+  <created>2026-09-20 13:05</created>
+  <projects>
+    <project uuid="5a25cdf5-6dd9-4b10-9e40-78308301a306">
+      <name>Top node 1</name>
+      <priority>None</priority>
+      <progress>0</progress>
+      <created>2026-09-20 13:05</created>
+      <changed>2026-09-20 13:05</changed>
+      <milestones>
+        <milestone uuid="e181cbb2-1b77-41bf-abde-020a02cc11b8">
+          <name>Milestone 1</name>
+          <priority>None</priority>
+          <difficulty>Direct</difficulty>
+          <due_date>2026-09-30</due_date>
+          <progress>0</progress>
+          <created>2026-09-20 13:05</created>
+          <changed>2026-09-20 13:05</changed>
+          <tasks>
+            <task uuid="4d812c1a-c1ab-48ad-a6b2-3b7c39d149d5">
+              <name>Task1</name>
+              <priority>Medium</priority>
+              <difficulty>Direct</difficulty>
+              <due_date>2026-09-25</due_date>
+              <progress>0</progress>
+              <created>2026-09-20 13:05</created>
+              <changed>2026-09-20 13:05</changed>
+              <subtasks>
+                <subtask uuid="325ff79f-7dfa-4519-b366-c36206c3c54d">
+                  <name>Subtask1</name>
+                  <priority>Critical</priority>
+                  <difficulty>Direct</difficulty>
+                  <due_date>2026-09-22</due_date>
+                  <progress>50</progress>
+                  <created>2026-09-20 13:05</created>
+                  <changed>2026-09-20 13:05</changed>
+                  <items>
+                    <item uuid="8bebfc9d-5676-42bc-a95c-7c6bb02c8e3f">
+                      <name>Protected2</name>
+                      <login>user2</login>
+                      <pass>password2</pass>
+                      <url>https://example.com/2</url>
+                      <created>2026-09-20 13:05</created>
+                      <changed>2026-09-20 13:05</changed>
+                    </item>
+                  </items>
+                </subtask>
+                <subtask uuid="c4b21b5a-f818-4fa5-9243-eecefa265b30">
+                  <name>Subtask2</name>
+                  <priority>None</priority>
+                  <difficulty>Direct</difficulty>
+                  <progress>100</progress>
+                  <created>2026-09-20 13:05</created>
+                  <changed>2026-09-20 13:05</changed>
+                </subtask>
+              </subtasks>
+              <items>
+                <item uuid="356e1d77-143c-4737-aa72-a8c6f449ee11">
+                  <name>Protected3</name>
+                  <login>
+                  </login>
+                  <pass>password3</pass>
+                  <url>
+                  </url>
+                  <created>2026-09-20 13:05</created>
+                  <changed>2026-09-20 13:05</changed>
+                  <items>
+                    <item uuid="6cc2bf00-bee2-4c40-b7b3-f6b97760e9ae">
+                      <name>Protected4</name>
+                      <login>
+                      </login>
+                      <pass>password4</pass>
+                      <url>
+                      </url>
+                      <created>2026-09-20 13:05</created>
+                      <changed>2026-09-20 13:05</changed>
+                    </item>
+                    <item uuid="7e889f3c-4271-47b7-96a0-c6f02af3fb34">
+                      <name>Protected5</name>
+                      <login>
+                      </login>
+                      <pass>password5</pass>
+                      <url>
+                      </url>
+                      <created>2026-09-20 13:05</created>
+                      <changed>2026-09-20 13:05</changed>
+                      <items>
+                        <item uuid="602042fb-7a2a-4221-89d6-e82f4b011055">
+                          <name>Protected6</name>
+                          <login>
+                          </login>
+                          <pass>password6</pass>
+                          <url>
+                          </url>
+                          <created>2026-09-20 13:05</created>
+                          <changed>2026-09-20 13:05</changed>
+                        </item>
+                      </items>
+                    </item>
+                  </items>
+                </item>
+              </items>
+            </task>
+          </tasks>
+        </milestone>
+        <milestone uuid="01b44f78-d293-4dbd-8d29-1994d7cbd9a1">
+          <name>Milestone 2</name>
+          <priority>None</priority>
+          <difficulty>Direct</difficulty>
+          <due_date>2026-10-10</due_date>
+          <progress>0</progress>
+          <created>2026-09-20 13:05</created>
+          <changed>2026-09-20 13:05</changed>
+          <tasks>
+            <task uuid="55e56e2c-40c1-4876-9a70-b19d93a46bd5">
+              <name>Task2</name>
+              <priority>High</priority>
+              <difficulty>Direct</difficulty>
+              <due_date>2026-09-21</due_date>
+              <progress>25</progress>
+              <created>2026-09-20 13:05</created>
+              <changed>2026-09-20 13:05</changed>
+              <items>
+                <item uuid="10cd26d8-646f-4514-86ba-04abef1b25f1">
+                  <name>Protected1</name>
+                  <login>user1</login>
+                  <pass>password1</pass>
+                  <url>https://example.com/1</url>
+                  <created>2026-09-20 13:05</created>
+                  <changed>2026-09-20 13:05</changed>
+                </item>
+              </items>
+            </task>
+            <task uuid="6eb80f9a-39e4-4211-90ad-fa44070fda51">
+              <name>Task3</name>
+              <priority>None</priority>
+              <difficulty>Direct</difficulty>
+              <progress>100</progress>
+              <created>2026-09-20 13:05</created>
+              <changed>2026-09-20 13:05</changed>
+            </task>
+          </tasks>
+        </milestone>
+      </milestones>
+    </project>
+  </projects>
+</project_store>

@@ -1,1 +1,2 @@
-﻿[assembly: Parallelize(Scope = ExecutionScope.MethodLevel)]
+﻿// These tests share the desktop, foreground window and keyboard input.
+[assembly: DoNotParallelize]

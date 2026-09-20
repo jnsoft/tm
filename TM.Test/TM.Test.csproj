@@ -26,4 +26,8 @@
     <ProjectReference Include="..\TM\TM.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures\*.xml;Fixtures\*.sha256" />
+  </ItemGroup>
+
 </Project>

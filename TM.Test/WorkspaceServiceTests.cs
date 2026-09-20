@@ -22,7 +22,7 @@ public sealed class WorkspaceServiceTests
     {
         ProjectCryptoService crypto = new();
         clipboard = new(nativeClipboard, TimeProvider.System);
-        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto), new DocumentCertificateService());
+        fileTools = new(new FileUtilityService(), fileDialogs, new PasswordFileService(), new DocumentFileService(crypto), new DocumentHmacService(crypto), new AccountFileService(new TestAccountFileProtection()), new PublicKeyFileService(crypto), new DocumentSignatureService(crypto), new DocumentCertificateService(), new DocumentTransferService(crypto));
         workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard, fileTools);
     }
 
@@ -531,6 +531,39 @@ public sealed class WorkspaceServiceTests
         Assert.IsFalse(publicCertificate.HasPrivateKey);
         await SendAsync(WorkspaceAction.Lock);
         await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportCertificate));
+    }
+
+    [TestMethod]
+    public async Task Transfers_RequireSavedDocumentsAndReplaceOnlyAfterSuccessfulImportAsync()
+    {
+        await NewAsync();
+        await AddAsync(ProjectItemType.Project, "Transferred root");
+        dialogs.SavePath = Path.Combine(directory, "transfer-source.xml");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ExportTransfer, command => command.Password = "test-only-password"));
+        WorkspaceViewModel saved = await SendAsync(WorkspaceAction.Save);
+        fileDialogs.Output = Path.Combine(directory, "projects.sav");
+        WorkspaceViewModel exported = await SendAsync(WorkspaceAction.ExportTransfer, command => command.Password = "test-only-password");
+        Assert.IsNotNull(exported.TransferKey);
+        Assert.IsTrue(File.Exists(fileDialogs.Output));
+        Assert.IsFalse(exported.Message!.Contains(exported.TransferKey, StringComparison.Ordinal));
+        Assert.AreEqual(saved.Revision, exported.Revision);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.ImportTransfer, command =>
+        {
+            command.Password = "import-password";
+            command.TransferKey = "wrong";
+            command.ConfirmTransferKey = "wrong";
+        }));
+        Assert.AreEqual("Transferred root", (await workspace.SnapshotAsync()).Tree.Single().Text);
+        fileDialogs.Input = fileDialogs.Output;
+        WorkspaceViewModel imported = await SendAsync(WorkspaceAction.ImportTransfer, command =>
+        {
+            command.Password = "import-password";
+            command.TransferKey = command.ConfirmTransferKey = exported.TransferKey!;
+        });
+        Assert.IsTrue(imported.IsDirty);
+        Assert.AreEqual("Unsaved document", imported.FileName);
+        Assert.AreEqual("Transferred root", imported.Tree.Single().Text);
+        Assert.IsNull(imported.TransferKey);
     }
 
     [TestMethod]

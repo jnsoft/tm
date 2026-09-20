@@ -4,7 +4,7 @@ using TM.Services;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile, ImportCertificate, ExportCertificate }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword, DocumentFile, Hmac, GenerateKeys, PublicKeyFile, GenerateCertificate, SignFile, ImportCertificate, ExportCertificate, ExportTransfer, ImportTransfer }
 
 public sealed class WorkspaceCommand
 {
@@ -24,6 +24,8 @@ public sealed class WorkspaceCommand
     [StringLength(4096)] public string ConfirmNewPassword { get; set; } = "";
     [StringLength(4096)] public string CertificatePassword { get; set; } = "";
     [StringLength(4096)] public string ConfirmCertificatePassword { get; set; } = "";
+    [StringLength(4096)] public string TransferKey { get; set; } = "";
+    [StringLength(4096)] public string ConfirmTransferKey { get; set; } = "";
     public bool ConfirmCertificateReplacement { get; set; }
     public bool ConfirmPasswordChange { get; set; }
     [StringLength(4096)] public string Secret { get; set; } = "";
@@ -50,4 +52,5 @@ public sealed record EditorViewModel(string Id, string Name, ProjectItemType Typ
 public sealed record TodoViewModel(string Id, string Title, DateTime? DueDate);
 public sealed record WorkspaceViewModel(long Revision, bool IsLoaded, bool IsLocked, bool IsDirty,
     string FileName, string Filter, IReadOnlyList<TreeItemViewModel> Tree,
-    IReadOnlyList<TodoViewModel> Todos, EditorViewModel? Editor, string? RevealedPassword = null, string? Message = null);
+    IReadOnlyList<TodoViewModel> Todos, EditorViewModel? Editor, string? RevealedPassword = null, string? Message = null,
+    string? TransferKey = null);

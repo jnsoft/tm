@@ -38,6 +38,8 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
         command.ConfirmNewPassword ??= "";
         command.CertificatePassword ??= "";
         command.ConfirmCertificatePassword ??= "";
+        command.TransferKey ??= "";
+        command.ConfirmTransferKey ??= "";
         command.Secret ??= "";
         command.PeerPublicKey ??= "";
         command.Filter ??= "";
@@ -50,6 +52,40 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             string? revealed = null;
             switch (command.Action)
             {
+                case WorkspaceAction.ExportTransfer:
+                    ProjectDocument transferDocument = RequireDocument();
+                    if (path is null || dirty) throw new InvalidOperationException("Save the document before creating a transfer file.");
+                    RequirePassword(command.Password);
+                    using (SecureString exportPassword = SecurePassword(command.Password))
+                    {
+                        if (!crypto.VerifyMasterPassword(transferDocument, exportPassword))
+                            throw new System.Security.Cryptography.CryptographicException("The document password is incorrect.");
+                        byte[]? transferKey = await fileTools.ExportTransferAsync(transferDocument, exportPassword, cancellationToken);
+                        if (transferKey is null) return Snapshot();
+                        try { return Snapshot() with { Message = "Transfer file created. Copy and securely store the displayed transfer key; it will not be shown again.", TransferKey = transferKey.ToBase64() }; }
+                        finally { ProjectCryptoService.ClearArray(ref transferKey); }
+                    }
+                case WorkspaceAction.ImportTransfer:
+                    RequireDiscard(command);
+                    RequirePassword(command.Password);
+                    if (string.IsNullOrWhiteSpace(command.TransferKey) || !string.Equals(command.TransferKey, command.ConfirmTransferKey, StringComparison.Ordinal))
+                        throw new InvalidOperationException("Enter matching transfer keys.");
+                    byte[]? inputTransferKey = null;
+                    try
+                    {
+                        try { inputTransferKey = command.TransferKey.FromBase64(); }
+                        catch (FormatException error) { throw new InvalidOperationException("Enter a valid transfer key.", error); }
+                        if (inputTransferKey.Length != DocumentTransferService.TransferKeyLength)
+                            throw new InvalidOperationException("Enter a valid transfer key.");
+                        using SecureString importPassword = SecurePassword(command.Password);
+                        ProjectDocument? imported = await fileTools.ImportTransferAsync(importPassword, inputTransferKey, cancellationToken);
+                        if (imported is null) return Snapshot();
+                        Replace(imported, null);
+                        await clipboard.ClearOwnedAsync(CancellationToken.None);
+                        dirty = true;
+                        break;
+                    }
+                    finally { ProjectCryptoService.ClearArray(ref inputTransferKey); }
                 case WorkspaceAction.ImportCertificate:
                     ProjectDocument importDocument = RequireDocument();
                     if (path is null || dirty) throw new InvalidOperationException("Save the document before importing a signing certificate.");

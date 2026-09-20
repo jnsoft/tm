@@ -84,6 +84,26 @@ public sealed class ProjectCryptoService
     public byte[] DeriveKey(byte[] masterKey, string context, byte[] salt) =>
         SecurityHelper.DeriveSessionKey_HKDF(masterKey, context.ToByte(), 32, salt);
 
+    public bool VerifyMasterPassword(ProjectDocument document, SecureString password)
+    {
+        ArgumentNullException.ThrowIfNull(password);
+        byte[]? supplied = null;
+        byte[]? active = null;
+        try
+        {
+            if (document.IsLocked || document.Security.ProtectedMasterKey is null || document.Security.Salt is null)
+                throw new InvalidOperationException("Open or unlock a document first.");
+            supplied = SecurityHelper.GetKeyFromPassword(password, document.Security.Salt, SaltLength, Pbkdf2Iterations);
+            active = ProtectedData.Unprotect(document.Security.ProtectedMasterKey, document.Security.Entropy, DataProtectionScope.CurrentUser);
+            return CryptographicOperations.FixedTimeEquals(supplied, active);
+        }
+        finally
+        {
+            ClearArray(ref supplied);
+            ClearArray(ref active);
+        }
+    }
+
     public string EncryptSecret(ProjectDocument document, string plain)
     {
         byte[] salt = SecurityHelper.GetRandomKey(SaltLength);

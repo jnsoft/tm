@@ -147,6 +147,24 @@ Document password change is now implemented in the following slice; remaining to
 - Certificate import/export, signer identity/key distribution, revocation, timestamping and long-term trust remain pending. CMS validity is not a trusted identity assertion.
 - Legacy transfer workflows remain pending. Tasks 04/05 and native acceptance remain incomplete; WPF, jnUtil and Windows DPAPI remain. No push, stable tag, cutover or Linux/macOS acceptance.
 
+## Encrypted project transfer import and export
+
+### Delivered
+- Preserves the legacy `.sav` transfer format: plaintext project XML is AES-GCM encrypted with a random 32-byte key and Base64 encoded. The historical "unencrypted" name is not used in the Photino UI because decrypted transfers contain protected-password plaintext.
+- Export requires a saved, clean, unlocked document and verifies its current password before showing a native destination dialog. Output is staged beside a new destination and published without overwrite; the random transfer key is rendered only in the immediate successful response.
+- Import uses a native file selection, requires a matching bounded Base64 transfer-key pair plus a new document password, rejects unsafe XML/DTD input, and constructs a complete replacement document before changing workspace state. Imported projects are re-encrypted under the new document password and must be saved.
+- Transfer intentionally excludes ECDH private keys and signing certificates. Browser-supplied paths are ignored; transfer keys, passwords, paths and decrypted XML are not retained in snapshots or generic statuses.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **174 passed, 0 failed, 0 skipped**.
+- Added coverage verifies bidirectional legacy `.sav` compatibility, transferred protected passwords, malformed/wrong-key/DTD rejection, bounded/no-overwrite behavior, staging cleanup, saved/dirty/revision/replacement guards, pre-dialog password validation, one-time key disclosure, ignored browser paths, and password/key/path non-disclosure through HTTP.
+
+### Outstanding and next work
+- Manually validate native dialogs, secure key transfer/copy practices, external WPF interoperability, large-file boundaries, permissions, cancellation and shutdown using disposable synthetic data. The shown transfer key is sensitive and browser/UI exposure is necessarily user-visible for that single response.
+- The transfer payload decrypts to XML containing protected-password plaintext. Keep its 32-byte key separately and securely; losing it prevents recovery. Transfer is not an authenticated sharing/trust, certificate, key-escrow or cross-platform acceptance solution. Buffer clearing and temporary-file deletion are best effort, not secure erasure.
+- Task 05 implementation slices are complete, but manual native acceptance and task 04 UI parity remain. WPF, jnUtil and Windows DPAPI remain; no push, stable tag, cutover or Linux/macOS acceptance.
+
 ## Signing certificate import and public export
 
 ### Delivered

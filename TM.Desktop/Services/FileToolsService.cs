@@ -7,9 +7,34 @@ namespace TM.Desktop.Services;
 
 public sealed class FileToolsService(FileUtilityService files, IFileToolDialogs dialogs, PasswordFileService passwordFiles,
     DocumentFileService documentFiles, DocumentHmacService hmacFiles, AccountFileService accountFiles,
-    PublicKeyFileService publicKeyFiles, DocumentSignatureService signatures, DocumentCertificateService certificates) : IDisposable
+    PublicKeyFileService publicKeyFiles, DocumentSignatureService signatures, DocumentCertificateService certificates,
+    DocumentTransferService transfers) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
+
+    public async Task<byte[]?> ExportTransferAsync(ProjectDocument document, SecureString documentPassword,
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? output = await dialogs.SelectOutputAsync("projects.sav", cancellationToken);
+            return output is null ? null : await transfers.ExportAsync(document, documentPassword, output, cancellationToken);
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task<ProjectDocument?> ImportTransferAsync(SecureString newDocumentPassword, ReadOnlyMemory<byte> transferKey,
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            string? input = await dialogs.SelectInputAsync(cancellationToken);
+            return input is null ? null : await transfers.ImportAsync(input, newDocumentPassword, transferKey, cancellationToken);
+        }
+        finally { gate.Release(); }
+    }
 
     public async Task<System.Security.Cryptography.X509Certificates.X509Certificate2?> ImportCertificateAsync(SecureString password,
         CancellationToken cancellationToken = default)

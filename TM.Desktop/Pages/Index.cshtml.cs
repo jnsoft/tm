@@ -45,6 +45,8 @@ public sealed class IndexModel(ShellViewModel viewModel, WorkspaceService worksp
             Input.ConfirmNewPassword = "";
             Input.CertificatePassword = "";
             Input.ConfirmCertificatePassword = "";
+            Input.TransferKey = "";
+            Input.ConfirmTransferKey = "";
             Input.Secret = "";
             Input.PeerPublicKey = "";
             ModelState.Clear();

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Password/clipboard workflows, hashes/Base64, file encryption, HMAC, EFS, public-key crypto, detached CMS signing and certificate import/public export build and pass 170 tests; evidence and remaining work are recorded in [tools-results.md](tools-results.md) and [ui-results.md](ui-results.md). EFS tests use a fake native boundary; native acceptance, manual stable tags and Linux/macOS validation remain deferred.
+Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Password/clipboard workflows, hashes/Base64, file encryption, HMAC, EFS, public-key crypto, detached CMS signing, certificate import/public export and encrypted project transfer build and pass 174 tests; evidence and remaining work are recorded in [tools-results.md](tools-results.md) and [ui-results.md](ui-results.md). EFS tests use a fake native boundary; native acceptance, manual stable tags and Linux/macOS validation remain deferred.
 
 **Progress**: 3/6 tasks complete <progress value="50" max="100"></progress> 50%
 

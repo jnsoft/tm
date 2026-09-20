@@ -279,6 +279,46 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task TransferPosts_UseNativePathsAndOnlyDiscloseTheKeyOnceAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"TM.TransferHttp.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TestProjectFileDialogs dialogs = new() { SavePath = Path.Combine(directory, "document.xml") };
+            TestFileToolDialogs files = new() { Output = Path.Combine(directory, "transfer.sav") };
+            await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(dialogs, fileDialogs: files);
+            await browser.PostAsync("New", ("Password", "source-password"));
+            await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Transferred project"));
+            await browser.PostAsync("Save");
+
+            await browser.PostAsync("ExportTransfer", ("Password", "wrong-password"));
+            Assert.AreEqual(0, files.OutputCalls);
+            await browser.PostAsync("ExportTransfer", ("Password", "source-password"),
+                ("DestinationPath", Path.Combine(directory, "injected.sav")));
+            Match keyMatch = Regex.Match(browser.Html, "<output data-transfer-key>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
+            Assert.IsTrue(keyMatch.Success);
+            string transferKey = WebUtility.HtmlDecode(keyMatch.Groups[1].Value);
+            Assert.IsTrue(File.Exists(files.Output));
+            Assert.IsFalse(File.Exists(Path.Combine(directory, "injected.sav")));
+            Assert.IsFalse(browser.Html.Contains(directory, StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("source-password", StringComparison.Ordinal));
+            string ordinaryGet = await browser.Client.GetStringAsync("/");
+            Assert.IsFalse(ordinaryGet.Contains(transferKey, StringComparison.Ordinal));
+
+            files.Input = files.Output;
+            await browser.PostAsync("ImportTransfer", ("Password", "import-password"), ("TransferKey", "invalid"), ("ConfirmTransferKey", "invalid"));
+            Assert.AreEqual(0, files.InputCalls);
+            await browser.PostAsync("ImportTransfer", ("Password", "import-password"), ("TransferKey", transferKey),
+                ("ConfirmTransferKey", transferKey), ("SourcePath", "ignored"));
+            Assert.IsTrue(browser.Html.Contains("unsaved changes", StringComparison.Ordinal));
+            foreach (string secret in new[] { transferKey, "import-password", directory })
+                Assert.IsFalse(browser.Html.Contains(secret, StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [TestMethod]
     public async Task CertificatePosts_ValidatePasswordsAndHidePfxDataAsync()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"TM.CertificateHttp.{Guid.NewGuid():N}"); Directory.CreateDirectory(directory);

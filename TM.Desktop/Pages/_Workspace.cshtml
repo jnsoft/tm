@@ -28,6 +28,30 @@
     @if (Model.IsLoaded)
     {
         <details>
+            <summary>Encrypted project transfer</summary>
+            <p>Export creates the legacy encrypted `.sav` transfer format and displays a one-time random key. The decrypted transfer contains project data and protected passwords; store the key separately and securely.</p>
+            <p>Import replaces the current document with transferred projects under a new document password. It does not transfer ECDH private keys or signing certificates. Save the imported document before using document-key or signing tools.</p>
+            <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                <label>Current document password <input type="password" name="Input.Password" required maxlength="4096" autocomplete="off" /></label>
+                <button name="Input.Action" value="ExportTransfer" disabled="@Model.IsDirty">Choose destination and create encrypted transfer</button>
+            </form>
+            @if (Model.TransferKey is { } transferKey)
+            {
+                <p role="alert">Transfer key (shown once): <output data-transfer-key>@transferKey</output></p>
+            }
+            <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                <label>New document password <input type="password" name="Input.Password" required maxlength="4096" autocomplete="off" /></label>
+                <label>Transfer key <input type="password" name="Input.TransferKey" required maxlength="4096" autocomplete="off" /></label>
+                <label>Confirm transfer key <input type="password" name="Input.ConfirmTransferKey" required maxlength="4096" autocomplete="off" /></label>
+                @if (Model.IsDirty) { <label><input type="checkbox" name="Input.ConfirmDiscard" value="true" required /> I confirm discarding unsaved changes</label> }
+                <button name="Input.Action" value="ImportTransfer">Choose transfer file and import</button>
+            </form>
+        </details>
+        <details>
             <summary>Change document password</summary>
             <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
                 @Html.AntiForgeryToken()

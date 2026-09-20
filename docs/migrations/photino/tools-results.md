@@ -66,3 +66,24 @@ Document password change is now implemented in the following slice; remaining to
 - Manually validate Unicode/empty passwords, paste into a disposable editor, 15-second expiry, quick repeated copies, a later copy from another application, lock/replacement, graceful shutdown and clipboard contention/history behavior. Do not use real secrets for acceptance.
 - Expiry is best effort: contention, crashes and forced termination can delay or prevent clearing. Cleanup cannot remove copies already captured by another process, clipboard manager or history/sync provider. Windows history/cloud hints are not a security guarantee.
 - Continue with dialog-free file hashing/base64 and native file selection, followed by encryption/HMAC/signature/certificate and legacy transfer workflows. Tasks 04/05 and native UX acceptance remain incomplete; no stable tag, push or cross-platform claim.
+
+## File hashing and Base64 tools
+
+### Delivered
+- File-tool UI embedded independently of the document editor and available at `/FileTools`. Native dialogs select both files; the browser command contains only an allowlisted operation, never paths or file contents.
+- Streaming SHA-256 (default), SHA-384, SHA-512, MD5 and SHA-1 hash sidecars preserving WPF grouped-uppercase text. MD5/SHA-1 are explicitly labeled legacy, not security recommendations.
+- Streaming Base64 encode/decode with bounded buffers, cancellation, UTF-8 BOM/ASCII whitespace decoding and rejection of malformed/truncated/trailing-after-padding data. Base64 is clearly labeled as encoding, not encryption.
+- Temporary output in the destination directory, published without overwrite after successful completion. Same-path and existing destinations are refused, with no-overwrite publication also guarding destination races. Source files are never overwritten. Only operation-created temporary files are cleaned up on failure.
+- Safe generic results/errors omit paths and contents. Native tools serialize operations and wait for an open dialog to resolve before releasing the gate, even when a request has been canceled.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, not a clean rebuild. Source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **127 passed, 0 failed, 0 skipped**.
+- Twenty-one added cases: five legacy hash comparisons, six Base64 sizes (empty through multi-buffer) with bidirectional jnUtil compatibility, six malformed-input cleanup cases, BOM/whitespace decoding, file-preservation/pre-canceled input checks, native-dialog cancellation and HTTP integration.
+- HTTP coverage verifies anonymous rejection, antiforgery, invalid operation rejection before dialogs, ignored browser path injection, safe success/error responses, canceled selection and unchanged existing destinations.
+- Initial six Base64 compatibility failures were test calls not awaiting jnUtil's asynchronous encode/decode operations. Both calls are now awaited and all compatibility cases pass. Production WPF code was not changed.
+
+### Outstanding and next work
+- Manually validate native input/output dialogs, cancellation, existing-output refusal, Unicode paths, large files, permissions and app shutdown during an operation. Native smoke coverage still covers startup/basic editing, not interactive file-tool dialogs.
+- Request-abort cancellation is implemented; dedicated progress/cancel controls, deterministic mid-stream cancellation and destination-race fault injection remain follow-up coverage. Cleanup deletes temporary files but is not secure erasure; decoding can create sensitive plaintext on disk.
+- Continue with file encryption/HMAC, signing/certificates and compatibility transfer workflows. Tasks 04/05 remain incomplete; retain WPF, Windows DPAPI and jnUtil. No stable tag, push or Linux/macOS acceptance.

@@ -1,0 +1,19 @@
+@page
+@model FileToolsModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="htmx-config" content='{"selfRequestsOnly":true,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0}' />
+    <title>TM file tools</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <script src="/vendor/htmx.min.js" defer></script>
+</head>
+<body hx-sync="body:queue all">
+    <main>
+        <partial name="_FileTools" model="Model.StatusMessage" />
+        <p><a href="/">Return to document</a></p>
+    </main>
+</body>
+</html>

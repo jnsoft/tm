@@ -1,0 +1,20 @@
+@model string
+<section id="file-tools">
+    <h2>File hashing and Base64</h2>
+    <p>Choose the input and a new output file using native dialogs. Existing files are never overwritten.</p>
+    <p>Base64 is encoding, not encryption. MD5 and SHA-1 are provided for legacy checksums, not security verification.</p>
+    <form method="post" action="/FileTools" hx-post="/FileTools" hx-target="#file-tools" hx-swap="outerHTML">
+        @Html.AntiForgeryToken()
+        <label>Operation <select name="Operation">
+            <option value="Sha256">SHA-256</option>
+            <option value="Sha384">SHA-384</option>
+            <option value="Sha512">SHA-512</option>
+            <option value="Md5">MD5 (legacy)</option>
+            <option value="Sha1">SHA-1 (legacy)</option>
+            <option value="Base64Encode">Base64 encode</option>
+            <option value="Base64Decode">Base64 decode</option>
+        </select></label>
+        <button>Choose files and run</button>
+    </form>
+    <p role="status">@Model</p>
+</section>

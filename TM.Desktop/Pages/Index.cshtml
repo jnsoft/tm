@@ -14,6 +14,9 @@
 <body hx-sync="body:queue all">
     <main>
         <h1>@Model.ViewModel.Title</h1>
+        <details><summary>File hashing and Base64 tools</summary>
+            <partial name="_FileTools" model='@("Ready.")' />
+        </details>
         @if (Model.Workspace is { } workspace)
         {
             <partial name="_Workspace" model="workspace" />

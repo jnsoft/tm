@@ -1,0 +1,24 @@
+@page
+@model IndexModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="htmx-config" content='{"selfRequestsOnly":true,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0}' />
+    <title>@Model.ViewModel.Title</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <script src="/vendor/htmx.min.js" defer></script>
+</head>
+<body>
+    <main>
+        <h1>@Model.ViewModel.Title</h1>
+        <p>Photino + Razor + htmx. No remote server or JavaScript framework.</p>
+        <section id="status" aria-live="polite"><partial name="_Status" model="Model.ViewModel" /></section>
+        <form method="post" asp-page-handler="Check" hx-post="/?handler=Check" hx-target="#status">
+            <button type="submit">Check local session</button>
+        </form>
+        <p>The WPF application remains available while the replacement is developed.</p>
+    </main>
+</body>
+</html>

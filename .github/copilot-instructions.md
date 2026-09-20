@@ -5,7 +5,8 @@ You are an expert C# .NET 10+ and WPF architect specializing in MVVM, clean code
 - This is a C#/.NET 10 WPF application.
 - Prefer async/await over blocking calls.
 - Prefer C# pattern matching over traditional type checks, casting, and null checks (e.g., use `is`, `switch` expressions, and positional/property patterns instead of `if/else` chains with `as`/casts).
-- For cross-platform Linux/macOS migration, prefer using Photino with htmx and avoid heavy JavaScript frameworks. Assess feasibility before implementation.
+- For cross-platform Linux/macOS migration, prioritize a working Windows solution first and defer Linux/macOS build/runtime validation. Assess feasibility before implementation. Retain jnUtil for Linux, as it can be built for that platform, rather than replacing it due to its currently Windows-only package.
+- Continue remaining milestone work, preserving tested Git checkpoints and new branches before major steps.
 
 ## Security
 - `SecurityHelper.GetKeyFromPassword` is deterministic: repeated calls with identical password, salt, length, and iterations return the same key.

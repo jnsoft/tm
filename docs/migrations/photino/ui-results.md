@@ -43,3 +43,20 @@ Commit this tested slice on photino-04-ui, then create photino-05-tools from tha
 - Tree expand/collapse and focus restoration, drag/drop or an accessible equivalent, keyboard shortcuts/navigation and broader accessibility remain outstanding.
 - Manually validate the Photino UI with native dialogs, dirty-close behavior, high DPI, screen readers, keyboard flow, touch/pointer behavior and existing WPF document compatibility.
 - Task 05 code/test implementation is complete but its native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.
+
+## Tree navigation parity checkpoint
+
+### Delivered
+- Ported legacy tree expand, collapse and focus-selected behavior through serialized workspace commands. Focus clears filtering, expands selected ancestors and keeps the selected editor/tree item aligned.
+- Tree expansion state is represented in immutable presentation snapshots and rendered as a server-owned HTML `details` boolean attribute after htmx updates. View-state actions do not mark document content dirty.
+- Added accessible command buttons for expand, collapse and focus selected item. Existing tree item buttons remain keyboard reachable and identify the selected item with `aria-current`.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **178 passed, 0 failed, 0 skipped**.
+- Added service and HTTP coverage for collapsed/expanded snapshots, focus restoration through filters, selection state, invalid item rejection, document-neutral view state and minimized boolean-attribute rendering.
+
+### Remaining UI and release work
+- Drag/drop or an accessible move/reparenting equivalent, keyboard shortcuts/navigation and broader accessibility remain outstanding. Browser-side expansion changes before a server update are not persisted.
+- Manually validate keyboard focus movement, screen readers, high-DPI layout, pointer/touch behavior, native dialogs and dirty-close behavior in the Photino window.
+- Task 05 code/test implementation is complete but native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.

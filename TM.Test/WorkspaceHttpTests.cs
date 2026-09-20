@@ -299,6 +299,27 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task TreeNavigationPosts_RenderServerOwnedExpansionAndFocusAsync()
+    {
+        await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());
+        await browser.PostAsync("New", ("Password", "test-password"));
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+        string root = browser.EditorId;
+        await browser.PostAsync("Add", ("NodeType", "Task"), ("NodeId", root), ("Name", "Child"));
+        string child = browser.EditorId;
+        await browser.PostAsync("CollapseTree");
+        Assert.IsFalse(browser.Html.Contains("<details open", StringComparison.Ordinal));
+        await browser.PostAsync("ExpandTree");
+        Assert.IsTrue(browser.Html.Contains("<details open", StringComparison.Ordinal));
+        await browser.PostAsync("Filter", ("Filter", "Root"));
+        await browser.PostAsync("FocusSelected", ("NodeId", child), ("Filter", "browser-injected"));
+        Assert.IsTrue(browser.Html.Contains("aria-current=\"true\"", StringComparison.Ordinal));
+        Assert.IsFalse(browser.Html.Contains("browser-injected", StringComparison.Ordinal));
+        await browser.PostAsync("FocusSelected", ("NodeId", "missing"));
+        Assert.IsTrue(browser.Html.Contains("Select an existing item", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task TransferPosts_UseNativePathsAndOnlyDiscloseTheKeyOnceAsync()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"TM.TransferHttp.{Guid.NewGuid():N}");

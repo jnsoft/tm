@@ -232,6 +232,18 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                 case WorkspaceAction.Filter:
                     filter = command.Filter;
                     break;
+                case WorkspaceAction.ExpandTree:
+                    RequireDocument().ExpandNodes();
+                    break;
+                case WorkspaceAction.CollapseTree:
+                    RequireDocument().CollapseNodes();
+                    break;
+                case WorkspaceAction.FocusSelected:
+                    NodeModel focused = FindNode(command.NodeId ?? selectedId);
+                    filter = "";
+                    RequireDocument().FocusNode(focused);
+                    selectedId = focused.Id;
+                    break;
                 case WorkspaceAction.SortByName:
                     RequireDocument().SortNodes();
                     dirty = true;
@@ -381,7 +393,7 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
             bool matches = string.IsNullOrWhiteSpace(filter)
                 || node.Text.Contains(filter, StringComparison.OrdinalIgnoreCase)
                 || node.Description.Contains(filter, StringComparison.OrdinalIgnoreCase);
-            return matches || children.Length > 0 ? new(node.Id, node.Text, node.NodeType, node.Id == selectedId, children) : null;
+            return matches || children.Length > 0 ? new(node.Id, node.Text, node.NodeType, node.Id == selectedId, node.IsExpanded, children) : null;
         }
         return new(revision, true, false, dirty, path is null ? "Unsaved document" : Path.GetFileName(path), filter,
             [.. document.Nodes.Select(Map).OfType<TreeItemViewModel>()],

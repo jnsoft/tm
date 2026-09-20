@@ -9,7 +9,7 @@
     </form>
     @if (Model.Node.Children.Count > 0)
     {
-        <details open><summary>Children (@Model.Node.Children.Count)</summary>
+        <details open="@Model.Node.Expanded"><summary>Children (@Model.Node.Children.Count)</summary>
             <ul>
                 @foreach (TreeItemViewModel child in Model.Node.Children)
                 {

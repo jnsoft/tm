@@ -108,7 +108,8 @@ public class ProjectDocument : ObservableObject
     public void ExpandNodes() => ExpandNodesRecursive(nodes);
     public void CollapseNodes() => CollapseNodesRecursive(nodes);
 
-    internal void FocusNode(NodeModel node)
+    /// <summary>Expands the selected node's ancestors and marks it selected for a UI adapter.</summary>
+    public void FocusNode(NodeModel node)
     {
         CollapseNodesRecursive(Nodes);
         node.ExpandParents();

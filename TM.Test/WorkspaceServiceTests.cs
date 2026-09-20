@@ -585,6 +585,27 @@ public sealed class WorkspaceServiceTests
     }
 
     [TestMethod]
+    public async Task TreeNavigation_ExpandsCollapsesAndFocusesSelectedNodeAsync()
+    {
+        await NewAsync();
+        WorkspaceViewModel root = await AddAsync(ProjectItemType.Project, "Root");
+        WorkspaceViewModel task = await AddAsync(ProjectItemType.Task, "Child", root.Editor!.Id);
+        dialogs.SavePath = Path.Combine(directory, "tree-navigation.xml");
+        await SendAsync(WorkspaceAction.Save);
+        await SendAsync(WorkspaceAction.CollapseTree);
+        Assert.IsFalse((await workspace.SnapshotAsync()).Tree.Single().Expanded);
+        WorkspaceViewModel expanded = await SendAsync(WorkspaceAction.ExpandTree);
+        Assert.IsTrue(expanded.Tree.Single().Expanded);
+        Assert.IsFalse(expanded.IsDirty, "Tree view state must not dirty document content.");
+        await SendAsync(WorkspaceAction.Filter, command => command.Filter = "Root");
+        WorkspaceViewModel focused = await SendAsync(WorkspaceAction.FocusSelected, command => command.NodeId = task.Editor!.Id);
+        Assert.AreEqual("", focused.Filter);
+        Assert.IsTrue(focused.Tree.Single().Expanded);
+        Assert.IsTrue(focused.Tree.Single().Children.Single().Selected);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.FocusSelected, command => command.NodeId = "missing"));
+    }
+
+    [TestMethod]
     public async Task Signing_RequiresSavedCurrentCertificateDocumentAndHoldsLifetimeAsync()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));

@@ -167,6 +167,8 @@
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <button name="Input.Action" value="ExpandTree">Expand tree</button>
+                    <button name="Input.Action" value="CollapseTree">Collapse tree</button>
                     <button name="Input.Action" value="SortByName">Sort tree by name</button>
                     <button name="Input.Action" value="SortByDate">Sort tree by date</button>
                 </form>
@@ -216,6 +218,12 @@
                 @if (Model.Editor is { } editor)
                 {
                     <h3>@editor.Type: @editor.Name</h3>
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                        <button name="Input.Action" value="FocusSelected">Focus selected item in tree</button>
+                    </form>
                     <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="editor" data-editor>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />

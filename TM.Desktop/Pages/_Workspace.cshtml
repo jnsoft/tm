@@ -133,7 +133,12 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />
                         <input type="hidden" name="Input.NodeId" value="@editor.Id" />
-                        @if (editor.Type is ProjectItemType.Protected) { <button name="Input.Action" value="Reveal">Reveal password for 20 seconds</button> }
+                        @if (editor.Type is ProjectItemType.Protected)
+                        {
+                            <button name="Input.Action" value="Reveal">Reveal password for 20 seconds</button>
+                            <button name="Input.Action" value="CopyPassword">Copy password (15 seconds)</button>
+                            <span>Other applications can read the clipboard. History or clipboard managers may retain copies.</span>
+                        }
                         <label><input type="checkbox" name="Input.ConfirmDelete" value="true" /> Confirm deletion including children</label>
                         <button name="Input.Action" value="Delete">Delete item</button>
                     </form>

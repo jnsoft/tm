@@ -45,3 +45,24 @@ Document password change is now implemented in the following slice; remaining to
 - Manually exercise the password-change form in the native WebView, including unapplied-edit confirmation, keyboard/focus, save/discard and error UX. Current native smoke covers startup/basic editing, not these controls.
 - Continue with ownership-aware clipboard expiry and native integration. File utilities, hashes/HMAC, signatures/certificates and legacy transfer workflows remain pending.
 - Tasks 04/05 remain incomplete. WPF, Windows DPAPI and jnUtil remain; no stable tag, push, cutover or cross-platform acceptance.
+
+## Ownership-aware clipboard copying
+
+### Delivered
+- Protected-only Copy password command sends decrypted text directly to a native clipboard boundary, never to the HTTP response. Temporary plaintext is cleared after the native write completes; snapshots and expiry metadata retain no copied password.
+- Windows backend uses a dedicated STA thread, a hidden message-only owner window, message pumping and native clipboard allocations. Browser clipboard permission remains disabled; no WPF dependency was added to TM.Desktop.
+- Default 15-second expiry, checked once per second. Copy/expiry are serialized; repeated copies replace the deadline. Ownership and sequence checks occur under the native clipboard lock, preserving subsequent external copies even if text is identical.
+- Lock and successful New/Open/Unlock replacement request cleanup. Failed opens do not clear the existing copy. Busy cleanup stays pending for the hosted expiry loop instead of preventing document locking. Graceful host shutdown attempts owned cleanup.
+- Best-effort Windows history/cloud exclusion flags and a visible warning about other applications/clipboard managers. Embedded NUL text is rejected to avoid truncated password copies.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date (not a clean rebuild). Source diagnostics are empty; `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **106 passed, 0 failed, 0 skipped**.
+- Seven new fake-backed tests cover deadline replacement, external copies including identical text, busy retries, failed/canceled/NUL copies, shutdown cleanup, workspace lock/replacement guards and HTTP non-disclosure.
+- Initial workflow test failures identified a fake retaining the caller's string rather than copying native data. Corrected the fake to copy its input; production temporary-string cleanup is retained.
+- No automated test writes to the real Windows clipboard. Existing native smoke tests exercise host startup/shutdown and basic editing, not native clipboard writes.
+
+### Limits and next work
+- Manually validate Unicode/empty passwords, paste into a disposable editor, 15-second expiry, quick repeated copies, a later copy from another application, lock/replacement, graceful shutdown and clipboard contention/history behavior. Do not use real secrets for acceptance.
+- Expiry is best effort: contention, crashes and forced termination can delay or prevent clearing. Cleanup cannot remove copies already captured by another process, clipboard manager or history/sync provider. Windows history/cloud hints are not a security guarantee.
+- Continue with dialog-free file hashing/base64 and native file selection, followed by encryption/HMAC/signature/certificate and legacy transfer workflows. Tasks 04/05 and native UX acceptance remain incomplete; no stable tag, push or cross-platform claim.

@@ -206,6 +206,37 @@ public sealed class WorkspaceHttpTests
         }
     }
 
+    [TestMethod]
+    public async Task CopyPassword_NeverRendersSecretAndPreservesExternalClipboardAsync()
+    {
+        TestNativeClipboard clipboard = new();
+        await using (HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs(), clipboard))
+        {
+            await browser.PostAsync("New", ("Password", "clipboard-test-password"));
+            await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+            Assert.IsFalse(browser.Html.Contains("Copy password (15 seconds)", StringComparison.Ordinal));
+            await browser.PostAsync("Add", ("NodeType", "Protected"), ("NodeId", browser.EditorId), ("Name", "Credential"));
+            string id = browser.EditorId;
+            await browser.PostAsync("Edit", ("NodeId", id), ("Name", "Credential"), ("ReplaceSecret", "true"), ("Secret", "http-clipboard-secret"));
+            await browser.PostAsync("CopyPassword", ("NodeId", id));
+            Assert.AreEqual("http-clipboard-secret", clipboard.Text);
+            Assert.IsTrue(browser.Html.Contains("Password copied", StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("http-clipboard-secret", StringComparison.Ordinal));
+            Assert.IsFalse((await browser.Client.GetStringAsync("/")).Contains("http-clipboard-secret", StringComparison.Ordinal));
+            string revision = browser.Revision;
+            clipboard.Busy = true;
+            await browser.PostAsync("CopyPassword", ("NodeId", id));
+            Assert.AreEqual(revision, browser.Revision);
+            Assert.IsTrue(browser.Html.Contains("clipboard is busy", StringComparison.Ordinal));
+            Assert.IsFalse(browser.Html.Contains("http-clipboard-secret", StringComparison.Ordinal));
+            clipboard.Busy = false;
+            clipboard.ExternalCopy("external text");
+            await browser.PostAsync("New", ("Password", "replacement-password"), ("ConfirmDiscard", "true"));
+            Assert.AreEqual("external text", clipboard.Text);
+        }
+        Assert.AreEqual("external text", clipboard.Text);
+    }
+
     private static string RevealedSecret(string html)
     {
         Match match = Regex.Match(html, "<output data-secret>(.*?)</output>", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
@@ -228,9 +259,10 @@ public sealed class WorkspaceHttpTests
             }
         }
 
-        public static async Task<HttpWorkspace> CreateAsync(TestProjectFileDialogs dialogs)
+        public static async Task<HttpWorkspace> CreateAsync(TestProjectFileDialogs dialogs, TestNativeClipboard? clipboard = null)
         {
-            DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, dialogs: dialogs);
+            DesktopWebHost host = await DesktopWebHost.StartAsync(AppContext.BaseDirectory, dialogs: dialogs,
+                clipboard: clipboard ?? new TestNativeClipboard());
             HttpClient client = new(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
             {
                 BaseAddress = host.Security.Origin,

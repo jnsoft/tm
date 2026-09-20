@@ -3,7 +3,7 @@ using TM.Entities;
 
 namespace TM.Desktop.ViewModels;
 
-public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword }
+public enum WorkspaceAction { Refresh, New, Open, Save, SaveAs, Lock, Unlock, Select, Add, Edit, Delete, Filter, Reveal, GeneratePassword, ChangePassword, CopyPassword }
 
 public sealed class WorkspaceCommand
 {

@@ -19,7 +19,7 @@ public sealed class DesktopWebHost : IAsyncDisposable
     }
 
     public static async Task<DesktopWebHost> StartAsync(string contentRoot, CancellationToken cancellationToken = default,
-        IProjectFileDialogs? dialogs = null)
+        IProjectFileDialogs? dialogs = null, INativeClipboard? clipboard = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -49,6 +49,11 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<ProjectStore>();
         builder.Services.AddSingleton<ShellViewModel>();
         builder.Services.AddSingleton<IProjectFileDialogs>(dialogs ?? new PhotinoProjectFileDialogs());
+        if (clipboard is null) builder.Services.AddSingleton<INativeClipboard, WindowsNativeClipboard>();
+        else builder.Services.AddSingleton(clipboard);
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<ExpiringClipboardService>();
+        builder.Services.AddHostedService(provider => provider.GetRequiredService<ExpiringClipboardService>());
         builder.Services.AddSingleton<WorkspaceService>();
         WebApplication app = builder.Build();
         DesktopSessionSecurity security = app.Services.GetRequiredService<DesktopSessionSecurity>();

@@ -8,7 +8,8 @@ using TM.Services;
 
 namespace TM.Desktop.Services;
 
-public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService crypto, IProjectFileDialogs dialogs) : IDisposable
+public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService crypto, IProjectFileDialogs dialogs,
+    ExpiringClipboardService clipboard) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private ProjectDocument? document;
@@ -52,6 +53,7 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                     RequirePassword(command.Password);
                     using (SecureString password = SecurePassword(command.Password))
                         Replace(store.Create(password), null);
+                    await clipboard.ClearOwnedAsync(CancellationToken.None);
                     dirty = true;
                     break;
                 case WorkspaceAction.Open:
@@ -66,6 +68,7 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                         ProjectDocumentSession opened = await store.OpenAsync(openPath, password, cancellationToken);
                         Replace(opened.Model, opened.FilePath);
                     }
+                    await clipboard.ClearOwnedAsync(CancellationToken.None);
                     break;
                 case WorkspaceAction.Save:
                 case WorkspaceAction.SaveAs:
@@ -88,6 +91,7 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                     dirty = false;
                     locked = true;
                     filter = "";
+                    await clipboard.ClearOwnedAsync(CancellationToken.None);
                     break;
                 case WorkspaceAction.Select:
                     selectedId = FindNode(command.NodeId).Id;
@@ -124,6 +128,13 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                     GeneratePassword(command);
                     dirty = true;
                     break;
+                case WorkspaceAction.CopyPassword:
+                    NodeModel copied = FindNode(command.NodeId);
+                    if (!copied.IsProtected) throw new InvalidOperationException("Select a protected item.");
+                    string plain = crypto.DecryptSecret(RequireDocument(), copied.Password);
+                    try { await clipboard.CopyAsync(plain, cancellationToken); }
+                    finally { SecurityHelper.ZeroString(plain); }
+                    break;
                 case WorkspaceAction.ChangePassword:
                     RequireDocument();
                     RequirePassword(command.Password);
@@ -141,7 +152,10 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                 default: throw new InvalidOperationException("Unsupported operation.");
             }
             revision++;
-            return Snapshot(revealed);
+            WorkspaceViewModel snapshot = Snapshot(revealed);
+            return command.Action is WorkspaceAction.CopyPassword
+                ? snapshot with { Message = "Password copied. TM will attempt to clear it after 15 seconds unless the clipboard changes." }
+                : snapshot;
         }
         finally { gate.Release(); }
     }

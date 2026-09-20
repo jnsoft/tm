@@ -11,12 +11,15 @@ public sealed class WorkspaceServiceTests
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), $"TM.WorkspaceTests.{Guid.NewGuid():N}");
     private readonly TestProjectFileDialogs dialogs = new();
+    private readonly TestNativeClipboard nativeClipboard = new();
+    private readonly ExpiringClipboardService clipboard;
     private readonly WorkspaceService workspace;
 
     public WorkspaceServiceTests()
     {
         ProjectCryptoService crypto = new();
-        workspace = new(new ProjectStore(crypto), crypto, dialogs);
+        clipboard = new(nativeClipboard, TimeProvider.System);
+        workspace = new(new ProjectStore(crypto), crypto, dialogs, clipboard);
     }
 
     [TestInitialize]
@@ -26,6 +29,7 @@ public sealed class WorkspaceServiceTests
     public void Cleanup()
     {
         workspace.Dispose();
+        clipboard.Dispose();
         Directory.Delete(directory, recursive: true);
     }
 
@@ -387,6 +391,51 @@ public sealed class WorkspaceServiceTests
         Assert.IsFalse(after.IsDirty);
         await SendAsync(WorkspaceAction.Lock);
         await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+    }
+
+    [TestMethod]
+    public async Task CopyPassword_IsTransientAndClearedOnLockAndReplacementAsync()
+    {
+        await NewAsync();
+        WorkspaceViewModel root = await AddAsync(ProjectItemType.Project, "Root");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = root.Editor!.Id));
+        string id = (await AddAsync(ProjectItemType.Protected, "Credential", root.Editor!.Id)).Editor!.Id;
+        await SendAsync(WorkspaceAction.Edit, command =>
+        {
+            command.NodeId = id; command.Name = "Credential";
+            command.ReplaceSecret = true; command.Secret = "copied-secret";
+        });
+        dialogs.SavePath = Path.Combine(directory, "clipboard.xml");
+        await SendAsync(WorkspaceAction.Save);
+        WorkspaceViewModel copied = await SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = id);
+        Assert.AreEqual("copied-secret", nativeClipboard.Text);
+        Assert.IsNull(copied.RevealedPassword);
+        Assert.IsFalse(copied.IsDirty);
+        Assert.IsNull((await workspace.SnapshotAsync()).RevealedPassword);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => workspace.ExecuteAsync(new()
+        {
+            Action = WorkspaceAction.CopyPassword, NodeId = id, Revision = copied.Revision - 1
+        }));
+        Assert.AreEqual(1, nativeClipboard.Writes);
+        nativeClipboard.Busy = true;
+        await SendAsync(WorkspaceAction.Lock);
+        Assert.IsTrue((await workspace.SnapshotAsync()).IsLocked);
+        nativeClipboard.Busy = false;
+        await clipboard.ExpireAsync();
+        Assert.IsNull(nativeClipboard.Text);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = id));
+        await SendAsync(WorkspaceAction.Unlock, command => command.Password = "test-only-password");
+        await SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = id);
+        dialogs.OpenPath = Path.Combine(directory, "invalid.xml");
+        await File.WriteAllTextAsync(dialogs.OpenPath, "<broken");
+        await Assert.ThrowsAsync<XmlException>(() => SendAsync(WorkspaceAction.Open, command => command.Password = "test-only-password"));
+        Assert.AreEqual("copied-secret", nativeClipboard.Text);
+        dialogs.OpenPath = dialogs.SavePath;
+        await SendAsync(WorkspaceAction.Open, command => command.Password = "test-only-password");
+        Assert.IsNull(nativeClipboard.Text);
+        await SendAsync(WorkspaceAction.CopyPassword, command => command.NodeId = id);
+        await NewAsync();
+        Assert.IsNull(nativeClipboard.Text);
     }
 
     private Task<WorkspaceViewModel> NewAsync() => SendAsync(WorkspaceAction.New, command => command.Password = "test-only-password");

@@ -26,3 +26,20 @@ This is an initial UI checkpoint, not completion of task 04 or full WPF parity. 
 
 ## Checkpoint policy
 Commit this tested slice on photino-04-ui, then create photino-05-tools from that commit. Do not retire WPF, create a stable tag, push branches or claim cross-platform acceptance.
+
+## Tree sorting and timestamp parity checkpoint
+
+### Delivered
+- Ported the legacy WPF tree sort-by-name and sort-by-date commands to serialized Photino workspace actions. Each action preserves the selected node, marks the document dirty and participates in revision protection.
+- Ported selected-item timestamp insertion using the legacy date/time shape (`yyyy-MM-dd` plus local short time), appending to an existing description without accepting browser-supplied replacement text.
+- Added explicit toolbar controls for both sort modes and a selected-item timestamp command. All mutations continue through Razor/htmx antiforgery and the workspace gate.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **176 passed, 0 failed, 0 skipped**.
+- Added service and HTTP coverage for sorted ordering, timestamp insertion, dirty/revision updates, invalid selections and ignored browser-supplied description text.
+
+### Remaining UI and release work
+- Tree expand/collapse and focus restoration, drag/drop or an accessible equivalent, keyboard shortcuts/navigation and broader accessibility remain outstanding.
+- Manually validate the Photino UI with native dialogs, dirty-close behavior, high DPI, screen readers, keyboard flow, touch/pointer behavior and existing WPF document compatibility.
+- Task 05 code/test implementation is complete but its native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.

@@ -567,6 +567,24 @@ public sealed class WorkspaceServiceTests
     }
 
     [TestMethod]
+    public async Task SortingAndTimestamping_UpdateSelectedDocumentStateAsync()
+    {
+        await NewAsync();
+        WorkspaceViewModel zulu = await AddAsync(ProjectItemType.Project, "Zulu");
+        await AddAsync(ProjectItemType.Project, "Alpha");
+        WorkspaceViewModel byName = await SendAsync(WorkspaceAction.SortByName);
+        Assert.IsTrue(byName.IsDirty);
+        Assert.AreEqual("Alpha", byName.Tree[0].Text);
+        Assert.AreEqual("Zulu", byName.Tree[1].Text);
+        WorkspaceViewModel timestamped = await SendAsync(WorkspaceAction.AppendTimestamp, command => command.NodeId = zulu.Editor!.Id);
+        Assert.IsTrue(timestamped.IsDirty);
+        await SendAsync(WorkspaceAction.Select, command => command.NodeId = zulu.Editor!.Id);
+        Assert.IsTrue((await workspace.SnapshotAsync()).Editor!.Description.StartsWith(DateTime.Today.ToString("yyyy-MM-dd"), StringComparison.Ordinal));
+        await SendAsync(WorkspaceAction.SortByDate);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.AppendTimestamp, command => command.NodeId = "missing"));
+    }
+
+    [TestMethod]
     public async Task Signing_RequiresSavedCurrentCertificateDocumentAndHoldsLifetimeAsync()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(WorkspaceAction.SignFile));

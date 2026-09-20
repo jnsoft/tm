@@ -164,6 +164,12 @@
             </details>
         <div class="workspace-grid">
             <nav aria-label="Projects and tasks">
+                <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                    <button name="Input.Action" value="SortByName">Sort tree by name</button>
+                    <button name="Input.Action" value="SortByDate">Sort tree by date</button>
+                </form>
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Input.Revision" value="@Model.Revision" />
@@ -262,6 +268,12 @@
                         }
                         <label><input type="checkbox" name="Input.ConfirmDelete" value="true" /> Confirm deletion including children</label>
                         <button name="Input.Action" value="Delete">Delete item</button>
+                    </form>
+                    <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Input.Revision" value="@Model.Revision" />
+                        <input type="hidden" name="Input.NodeId" value="@editor.Id" />
+                        <button name="Input.Action" value="AppendTimestamp">Append timestamp to description</button>
                     </form>
                     @if (Model.RevealedPassword is { } secret)
                     {

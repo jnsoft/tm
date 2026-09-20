@@ -279,6 +279,26 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task SortAndTimestampPosts_UpdateTheWorkspaceWithoutEchoingFieldsAsync()
+    {
+        await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());
+        await browser.PostAsync("New", ("Password", "test-password"));
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Zulu"));
+        string zulu = browser.EditorId;
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Alpha"));
+        string revision = browser.Revision;
+        await browser.PostAsync("SortByName");
+        Assert.IsTrue(browser.Html.IndexOf("Project: Alpha", StringComparison.Ordinal) < browser.Html.IndexOf("Project: Zulu", StringComparison.Ordinal));
+        Assert.AreNotEqual(revision, browser.Revision);
+        await browser.PostAsync("AppendTimestamp", ("NodeId", zulu), ("Description", "browser-injected"));
+        Assert.IsFalse(browser.Html.Contains("browser-injected", StringComparison.Ordinal));
+        await browser.PostAsync("Select", ("NodeId", zulu));
+        Assert.IsTrue(browser.Html.Contains(DateTime.Today.ToString("yyyy-MM-dd"), StringComparison.Ordinal));
+        await browser.PostAsync("AppendTimestamp", ("NodeId", "missing"));
+        Assert.IsTrue(browser.Html.Contains("Select an existing item", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task TransferPosts_UseNativePathsAndOnlyDiscloseTheKeyOnceAsync()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"TM.TransferHttp.{Guid.NewGuid():N}");

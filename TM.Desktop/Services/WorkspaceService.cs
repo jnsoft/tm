@@ -232,6 +232,23 @@ public sealed class WorkspaceService(ProjectStore store, ProjectCryptoService cr
                 case WorkspaceAction.Filter:
                     filter = command.Filter;
                     break;
+                case WorkspaceAction.SortByName:
+                    RequireDocument().SortNodes();
+                    dirty = true;
+                    break;
+                case WorkspaceAction.SortByDate:
+                    RequireDocument().SortNodes(byDate: true);
+                    dirty = true;
+                    break;
+                case WorkspaceAction.AppendTimestamp:
+                    NodeModel timestamped = FindNode(command.NodeId);
+                    string stamp = $"{DateTime.Today:yyyy-MM-dd} {DateTime.Now:t}";
+                    timestamped.Description = string.IsNullOrWhiteSpace(timestamped.Description)
+                        ? stamp
+                        : $"{timestamped.Description}{Environment.NewLine}{stamp}";
+                    selectedId = timestamped.Id;
+                    dirty = true;
+                    break;
                 case WorkspaceAction.Reveal:
                     NodeModel secret = FindNode(command.NodeId);
                     if (!secret.IsProtected) throw new InvalidOperationException("Select a protected item.");

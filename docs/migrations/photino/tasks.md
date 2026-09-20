@@ -2,7 +2,7 @@
 
 ## Overview
 
-Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Password workflows, clipboard copying and file hashing/Base64 tools build and pass 127 tests; evidence and remaining work are recorded in [tools-results.md](tools-results.md) and [ui-results.md](ui-results.md). Continue between tested checkpoint branches; manual stable tags and Linux/macOS validation remain deferred.
+Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Password workflows, clipboard copying, hashing/Base64 and password file encryption build and pass 133 tests; evidence and remaining work are recorded in [tools-results.md](tools-results.md) and [ui-results.md](ui-results.md). Continue between tested checkpoint branches; manual stable tags and Linux/macOS validation remain deferred.
 
 **Progress**: 3/6 tasks complete <progress value="50" max="100"></progress> 50%
 

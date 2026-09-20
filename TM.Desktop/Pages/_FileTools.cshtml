@@ -1,6 +1,6 @@
 @model string
 <section id="file-tools">
-    <h2>File hashing and Base64</h2>
+    <h2>File tools</h2>
     <p>Choose the input and a new output file using native dialogs. Existing files are never overwritten.</p>
     <p>Base64 is encoding, not encryption. MD5 and SHA-1 are provided for legacy checksums, not security verification.</p>
     <form method="post" action="/FileTools" hx-post="/FileTools" hx-target="#file-tools" hx-swap="outerHTML">
@@ -15,6 +15,19 @@
             <option value="Base64Decode">Base64 decode</option>
         </select></label>
         <button>Choose files and run</button>
+    </form>
+    <h3>Password file encryption</h3>
+    <p>Uses the existing TM/jnUtil file format. Source files are retained: encryption does not delete or secure the original plaintext. Output files must be new.</p>
+    <p>Legacy encryption cannot be interrupted mid-call. Cancellation prevents publishing its output after the call finishes. Deleted temporary files are not securely erased.</p>
+    <form method="post" action="/FileTools?handler=Password" hx-post="/FileTools?handler=Password" hx-target="#file-tools" hx-swap="outerHTML">
+        @Html.AntiForgeryToken()
+        <label>Password operation <select name="PasswordOperation">
+            <option value="Encrypt">Encrypt with password</option>
+            <option value="Decrypt">Decrypt with password</option>
+        </select></label>
+        <label>File password <input type="password" name="FilePassword" required maxlength="4096" autocomplete="off" /></label>
+        <label>Confirm file password (encryption only) <input type="password" name="ConfirmFilePassword" maxlength="4096" autocomplete="off" /></label>
+        <button>Choose files and encrypt/decrypt</button>
     </form>
     <p role="status">@Model</p>
 </section>

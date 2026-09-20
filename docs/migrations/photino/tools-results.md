@@ -87,3 +87,24 @@ Document password change is now implemented in the following slice; remaining to
 - Manually validate native input/output dialogs, cancellation, existing-output refusal, Unicode paths, large files, permissions and app shutdown during an operation. Native smoke coverage still covers startup/basic editing, not interactive file-tool dialogs.
 - Request-abort cancellation is implemented; dedicated progress/cancel controls, deterministic mid-stream cancellation and destination-race fault injection remain follow-up coverage. Cleanup deletes temporary files but is not secure erasure; decoding can create sensitive plaintext on disk.
 - Continue with file encryption/HMAC, signing/certificates and compatibility transfer workflows. Tasks 04/05 remain incomplete; retain WPF, Windows DPAPI and jnUtil. No stable tag, push or Linux/macOS acceptance.
+
+## Password-based file encryption/decryption
+
+### Delivered
+- Native-selected password file encryption/decryption using the existing jnUtil format. No document key is required; document-key, HMAC and account-bound variants remain pending.
+- Unlike WPF's destructive encryption helper, this adapter retains the source and refuses existing/same-path outputs. UI explicitly warns that original plaintext is retained and not secured by encrypting a copy.
+- Operation-specific staging directory beside the destination with a nonexistent payload path, followed by no-overwrite publication on success. Cleanup deletes the known payload and empty staging directory, never unexpected files recursively.
+- Legacy synchronous crypto runs off the request thread and is always awaited. Cancellation is checked before work and before publication; it cannot interrupt the legacy call or securely erase temporary plaintext.
+- Separate password handler/form validates bounded inputs and encryption confirmation before native dialogs, shares the file-tools gate, clears request password/model state and returns generic status without paths/passwords.
+
+### Validation
+- Visual Studio solution build succeeds; latest Build pane reports five projects up-to-date, not a clean rebuild. Source diagnostics are empty and `git diff --check` passes.
+- Final combined TM.Test/TM.UITest run: **133 passed, 0 failed, 0 skipped**.
+- Six new cases cover empty/one-byte/multi-buffer bidirectional jnUtil interoperability, wrong-password and malformed-input rejection, no-overwrite/source preservation/staging cleanup, invalid/pre-canceled requests and HTTP validation/non-disclosure.
+- HTTP tests check anonymous/antiforgery rejection, invalid/oversized/mismatched input before dialogs, ignored browser paths, encrypted/decrypted round trip, wrong-password cleanup and canceled selection.
+- Initial validation found that jnUtil rejects precreated output files. Replaced the reserved temporary file with a nonexistent payload inside an operation-specific directory, then reran all tests successfully.
+
+### Outstanding and next work
+- Manual native file/password UX, permissions, large-file behavior and shutdown/cancellation during synchronous crypto remain acceptance items. Deterministic mid-call cancellation and destination-race tests are deferred.
+- Existing format is retained; these tests do not establish comprehensive tamper authentication for arbitrary legacy ciphertext. Staging inherits destination-directory permissions; cleanup is deletion, not secure erasure.
+- Next: document-key file encryption and HMAC under workspace locking, followed by signing/certificates and compatibility transfers. Tasks 04/05 remain incomplete; no stable tag, push, cutover or cross-platform claim.

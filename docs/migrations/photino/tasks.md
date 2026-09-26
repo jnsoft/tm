@@ -2,7 +2,7 @@
 
 ## Overview
 
-Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Platform-tool implementation is complete: password/clipboard workflows, hashes/Base64, file encryption, HMAC, EFS, public-key crypto, detached CMS signing, certificate import/public export and encrypted project transfer build and pass 182 tests. Evidence and remaining work are recorded in [tools-results.md](tools-results.md), [ui-results.md](ui-results.md), and the [Windows release checklist](windows-release.md). EFS tests use a fake native boundary; manual native acceptance, stable tagging and Linux/macOS validation remain deferred.
+Replace WPF incrementally with a shared core and Photino/Razor/htmx UI, working on Windows first with jnUtil retained. Platform-tool implementation is complete: password/clipboard workflows, hashes/Base64, file encryption, HMAC, EFS, public-key crypto, detached CMS signing, certificate import/public export and encrypted project transfer build and pass 182 tests. GitHub Actions now publishes a separate validated `photino-win-x64` artifact. Evidence and remaining work are recorded in [tools-results.md](tools-results.md), [ui-results.md](ui-results.md), and the [Windows release checklist](windows-release.md). EFS tests use a fake native boundary; manual native acceptance, stable tagging and Linux/macOS validation remain deferred.
 
 **Progress**: 4/6 tasks complete <progress value="67" max="100"></progress> 67%
 

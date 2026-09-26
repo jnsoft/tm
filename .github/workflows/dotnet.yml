@@ -10,6 +10,8 @@ on:
     
 env:
   AppName: TM
+  PhotinoProject: TM.Desktop/TM.Desktop.csproj
+  PhotinoArtifactName: photino-win-x64
 
 jobs:
   build:
@@ -37,10 +39,34 @@ jobs:
       - name: Publish
         run: dotnet publish ./${{ env.AppName }}/${{ env.AppName }}.csproj -c Release -r win-x64 -o dist
 
+      - name: Publish Photino Windows x64
+        run: dotnet publish ${{ env.PhotinoProject }} -c Release -p:PublishProfile=Windows-x64-Folder --output dist/${{ env.PhotinoArtifactName }}
+
+      - name: Verify Photino publish layout
+        shell: pwsh
+        run: |
+          $publish = "dist/${{ env.PhotinoArtifactName }}"
+          $required = @('TM.Desktop.exe', 'wwwroot', 'Photino.NET.dll', 'WebView2Loader.dll')
+          $missing = $required | Where-Object { -not (Test-Path (Join-Path $publish $_)) }
+          if ($missing) { throw "Missing Photino publish assets: $($missing -join ', ')" }
+
+      - name: Upload Photino Windows x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PhotinoArtifactName }}
+          path: dist/${{ env.PhotinoArtifactName }}
+          if-no-files-found: error
+
+      - name: Package Photino Windows x64 release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: Compress-Archive -Path dist/${{ env.PhotinoArtifactName }}\* -DestinationPath dist/TM-Photino-win-x64.zip
+
       - name: Create GitHub Release and upload asset
         uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             dist/${{ env.AppName }}.exe
+            dist/TM-Photino-win-x64.zip
 

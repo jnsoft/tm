@@ -4,7 +4,7 @@
 - Extracted existing domain entities, observable/tree/document/security models, crypto service and session record into `TM.Core` without changing namespaces or encryption parameters.
 - Removed WPF visibility types from the model; WPF uses boolean-to-visibility bindings and references the core assembly for entity types.
 - Added dialog-free `ProjectStore`: bounded XML parsing with DTDs prohibited, async/cancellable I/O, fresh document loading with key/certificate cleanup on failure, same-directory temporary-file saves and explicit close cleanup.
-- Kept jnUtil 2.0.2, Windows DPAPI and the legacy WPF client. `TM.Core` is intentionally Windows-targeted, not yet cross-platform.
+- `TM.Core` now targets portable .NET 10 with jnUtil 2.0.0. Windows retains DPAPI while non-Windows hosts use authenticated process-local protection for session-only keys; native Linux/macOS runtime validation remains pending.
 - Added eight persistence/filtering/assembly-boundary regression tests.
 
 ## Evidence
@@ -14,7 +14,7 @@
 - No production crypto/file-format changes; no warning suppressions added.
 
 ## Remaining
-- Non-Windows jnUtil build and key protection are deferred by user instruction.
+- Native Linux/macOS runtime validation and an optional OS-keyring-backed key protector remain pending.
 - Manual UX acceptance/stable tag remain pending; this is a tested local checkpoint.
 - WPF dialog orchestration remains in the WPF project; the new client will use the dialog-free store.
 - Caller must serialize mutations with saving. A later UI/session service owns this concurrency boundary.

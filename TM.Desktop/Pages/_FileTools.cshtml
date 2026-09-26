@@ -22,8 +22,8 @@
         @Html.AntiForgeryToken()
         <button>Choose data and CMS signature to verify</button>
     </form>
-    <h3>Password file encryption</h3>
-    <p>Uses the existing TM/jnUtil file format. Source files are retained: encryption does not delete or secure the original plaintext. Output files must be new.</p>
+    <h3>Portable password file encryption</h3>
+    <p>Uses the compatible TM/jnUtil file format on Windows, Linux and macOS. Source files are retained: encryption does not delete or secure the original plaintext. Output files must be new, and losing the password prevents decryption.</p>
     <p>Legacy encryption cannot be interrupted mid-call. Cancellation prevents publishing its output after the call finishes. Deleted temporary files are not securely erased.</p>
     <form method="post" action="/FileTools?handler=Password" hx-post="/FileTools?handler=Password" hx-target="#file-tools" hx-swap="outerHTML">
         @Html.AntiForgeryToken()
@@ -34,19 +34,6 @@
         <label>File password <input type="password" name="FilePassword" required maxlength="4096" autocomplete="off" /></label>
         <label>Confirm file password (encryption only) <input type="password" name="ConfirmFilePassword" maxlength="4096" autocomplete="off" /></label>
         <button>Choose files and encrypt/decrypt</button>
-    </form>
-    <h3>Windows-account file encryption (EFS)</h3>
-    <p>Uses Windows Encrypting File System, not a portable encrypted attachment or document password. Requires an EFS-capable Windows edition, NTFS volume and policy. Keep a secure backup of your EFS certificate and private key for recovery; losing them can make files inaccessible.</p>
-    <p>Your account and authorized recovery agents can read EFS files transparently. Copying or exporting a file can remove EFS protection. The .enc extension alone does not provide encryption. This feature is not available for Linux/macOS.</p>
-    <p>Creates a new copy and retains the source, including original plaintext. Decryption creates a plaintext copy. Cancellation waits for the native call; temporary plaintext deletion is not secure erasure.</p>
-    <form method="post" action="/FileTools?handler=Account" hx-post="/FileTools?handler=Account" hx-target="#file-tools" hx-swap="outerHTML">
-        @Html.AntiForgeryToken()
-        <label>Windows EFS operation <select name="AccountOperation">
-            <option value="Encrypt">Create EFS-encrypted copy</option>
-            <option value="Decrypt">Create decrypted copy of EFS file</option>
-        </select></label>
-        <label><input type="checkbox" name="AcknowledgeAccountLimits" value="true" required /> I understand the Windows/account recovery requirements and retained plaintext.</label>
-        <button>Choose files and apply EFS operation</button>
     </form>
     <p role="status">@Model</p>
 </section>

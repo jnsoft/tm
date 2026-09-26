@@ -38,7 +38,8 @@ public static class DesktopApplication
             }
             catch (Exception exception) { completion.TrySetException(exception); }
         }) { Name = "TM Photino UI", IsBackground = false };
-        ui.SetApartmentState(ApartmentState.STA);
+        if (OperatingSystem.IsWindows())
+            ui.SetApartmentState(ApartmentState.STA);
         ui.Start();
         try { await completion.Task; }
         finally

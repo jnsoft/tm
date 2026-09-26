@@ -26,10 +26,10 @@ Incrementally replace the WPF UI with Photino, local ASP.NET Core, Razor HTML pa
 - The user approved the full rewrite and milestone sequence, with explicit testing and branch checkpoints.
 - No installed modernization scenario covers WPF-to-Photino; track this work with repository documents and general plan tools, not an unrelated upgrade scenario or fabricated scenario state.
 - Baseline work must use synthetic test data, never real passwords or user documents.
-- Windows DPAPI and account-bound encryption require an explicit portability/security decision before replacement; do not silently weaken protection.
+- Windows DPAPI and non-Windows in-memory key protection require explicit runtime validation; do not silently weaken protection.
 - This first milestone changes tests and documentation, not the production UI or document format.
 - The user requested continuing the remaining rewrite with Windows working first; this supersedes routine milestone approval pauses and immediate cross-platform acceptance gates.
-- Preserve DPAPI on Windows for now; a future portable jnUtil build and non-Windows key protection are deferred, not claimed complete.
+- Preserve DPAPI on Windows; the portable jnUtil build and authenticated process-local non-Windows key protection are implemented but not yet runtime-validated on Linux/macOS.
 - Continue to commit tested checkpoints and branch before major changes; outstanding manual checks prevent stable tags, not work on subsequent checkpoint branches.
 - User approved continuing validation using Visual Studio build after canceling the terminal rebuild; no claim of a clean command-line rebuild is made.
 

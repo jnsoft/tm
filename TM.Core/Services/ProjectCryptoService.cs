@@ -10,6 +10,12 @@ public sealed class ProjectCryptoService
 {
     public const int Pbkdf2Iterations = 1000000;
     public const int SaltLength = 32;
+    private readonly IInMemoryKeyProtector keyProtector;
+
+    public ProjectCryptoService(IInMemoryKeyProtector? keyProtector = null) =>
+        this.keyProtector = keyProtector ?? (OperatingSystem.IsWindows()
+            ? new WindowsInMemoryKeyProtector()
+            : new EphemeralInMemoryKeyProtector());
 
     public void InitializeNew(ProjectDocument document, SecureString password)
     {
@@ -64,17 +70,16 @@ public sealed class ProjectCryptoService
             throw new ArgumentNullException(nameof(key));
 
         document.Security.ProtectedMasterKey =
-            ProtectedData.Protect(key, document.Security.Entropy, DataProtectionScope.CurrentUser);
+            keyProtector.Protect(key, document.Security.Entropy);
 
         ClearArray(ref key);
     }
 
     public byte[] DeriveKey(ProjectDocument document, string context, byte[] salt, int length = 32)
     {
-        byte[]? key = ProtectedData.Unprotect(
+        byte[]? key = keyProtector.Unprotect(
             document.Security.ProtectedMasterKey ?? throw new InvalidOperationException("Master key is not set"),
-            document.Security.Entropy,
-            DataProtectionScope.CurrentUser);
+            document.Security.Entropy);
 
         byte[] derivedKey = SecurityHelper.DeriveSessionKey_HKDF(key, context.ToByte(), length, salt);
         ClearArray(ref key);
@@ -94,7 +99,7 @@ public sealed class ProjectCryptoService
             if (document.IsLocked || document.Security.ProtectedMasterKey is null || document.Security.Salt is null)
                 throw new InvalidOperationException("Open or unlock a document first.");
             supplied = SecurityHelper.GetKeyFromPassword(password, document.Security.Salt, SaltLength, Pbkdf2Iterations);
-            active = ProtectedData.Unprotect(document.Security.ProtectedMasterKey, document.Security.Entropy, DataProtectionScope.CurrentUser);
+            active = keyProtector.Unprotect(document.Security.ProtectedMasterKey, document.Security.Entropy);
             return CryptographicOperations.FixedTimeEquals(supplied, active);
         }
         finally
@@ -144,8 +149,8 @@ public sealed class ProjectCryptoService
                 throw new ArgumentException("Enter a new document password.", nameof(newPassword));
 
             oldKey = SecurityHelper.GetKeyFromPassword(oldPassword, document.Security.Salt, SaltLength, Pbkdf2Iterations);
-            activeKey = ProtectedData.Unprotect(document.Security.ProtectedMasterKey,
-                document.Security.Entropy, DataProtectionScope.CurrentUser);
+            activeKey = keyProtector.Unprotect(document.Security.ProtectedMasterKey,
+                document.Security.Entropy);
             if (!CryptographicOperations.FixedTimeEquals(oldKey, activeKey))
                 throw new CryptographicException("The current document password is incorrect.");
 
@@ -163,7 +168,7 @@ public sealed class ProjectCryptoService
             ProjectDocument staged = new();
             staged.LoadProjects(projects);
             byte[] entropy = SecurityHelper.GetRandomKey(SaltLength);
-            byte[] protectedKey = ProtectedData.Protect(newKey, entropy, DataProtectionScope.CurrentUser);
+            byte[] protectedKey = keyProtector.Protect(newKey, entropy);
             ClearMasterKey(document);
             document.Security.Salt = newSalt;
             document.Security.Entropy = entropy;
@@ -198,10 +203,9 @@ public sealed class ProjectCryptoService
     {
         return document.Security.ProtectedPrivateKey is null
             ? null
-            : ProtectedData.Unprotect(
+            : keyProtector.Unprotect(
                 document.Security.ProtectedPrivateKey,
-                document.Security.PrivateKeyEntropy,
-                DataProtectionScope.CurrentUser);
+                document.Security.PrivateKeyEntropy);
     }
 
     public void EnsureCaCertificate(ProjectDocument document)
@@ -566,10 +570,9 @@ public sealed class ProjectCryptoService
             Array.Clear(document.Security.PrivateKeyEntropy, 0, document.Security.PrivateKeyEntropy.Length);
 
         document.Security.PrivateKeyEntropy = SecurityHelper.GetRandomKey(SaltLength);
-        document.Security.ProtectedPrivateKey = ProtectedData.Protect(
+        document.Security.ProtectedPrivateKey = keyProtector.Protect(
             key ?? throw new ArgumentNullException(nameof(key)),
-            document.Security.PrivateKeyEntropy,
-            DataProtectionScope.CurrentUser);
+            document.Security.PrivateKeyEntropy);
 
         ClearArray(ref key);
     }

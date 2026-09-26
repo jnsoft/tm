@@ -8,6 +8,7 @@ You are an expert C# .NET 10+ and WPF architect specializing in MVVM, clean code
 - For cross-platform Linux/macOS migration, prioritize a working Windows solution first and defer Linux/macOS build/runtime validation. Assess feasibility before implementation. Retain jnUtil for Linux, as it can be built for that platform, rather than replacing it due to its currently Windows-only package.
 - Continue remaining milestone work, preserving tested Git checkpoints and new branches before major steps.
 - Use GitHub Actions workflows instead of Azure Pipelines for CI and release automation in this repository.
+- When continuing the Photino migration, implement all automatable remaining work without repeatedly listing plans or asking for approval; only pause for genuinely non-automatable native platform validation or a required design decision. Clearly state platform readiness when asked.
 
 ## Security
 - `SecurityHelper.GetKeyFromPassword` is deterministic: repeated calls with identical password, salt, length, and iterations return the same key.

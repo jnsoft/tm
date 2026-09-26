@@ -13,6 +13,9 @@ public sealed class WindowsNativeClipboard : INativeClipboard, IAsyncDisposable
 
     public WindowsNativeClipboard()
     {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("The Windows clipboard adapter requires Windows.");
+
         Thread thread = new(Run) { IsBackground = true, Name = "TM Clipboard" };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();

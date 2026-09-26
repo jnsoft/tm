@@ -19,8 +19,7 @@ public sealed class DesktopWebHost : IAsyncDisposable
     }
 
     public static async Task<DesktopWebHost> StartAsync(string contentRoot, CancellationToken cancellationToken = default,
-        IProjectFileDialogs? dialogs = null, INativeClipboard? clipboard = null, IFileToolDialogs? fileDialogs = null,
-        IAccountFileProtection? accountProtection = null)
+        IProjectFileDialogs? dialogs = null, INativeClipboard? clipboard = null, IFileToolDialogs? fileDialogs = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -56,15 +55,12 @@ public sealed class DesktopWebHost : IAsyncDisposable
         builder.Services.AddSingleton<PasswordFileService>();
         builder.Services.AddSingleton<DocumentFileService>();
         builder.Services.AddSingleton<DocumentHmacService>();
-        builder.Services.AddSingleton<IAccountFileProtection>(accountProtection ?? new WindowsAccountFileProtection());
-        builder.Services.AddSingleton<AccountFileService>();
         builder.Services.AddSingleton<PublicKeyFileService>();
         builder.Services.AddSingleton<DocumentSignatureService>();
         builder.Services.AddSingleton<DocumentCertificateService>();
         builder.Services.AddSingleton<DocumentTransferService>();
         builder.Services.AddSingleton<FileToolsService>();
-        if (clipboard is null) builder.Services.AddSingleton<INativeClipboard, WindowsNativeClipboard>();
-        else builder.Services.AddSingleton(clipboard);
+        builder.Services.AddSingleton<INativeClipboard>(clipboard ?? CreateClipboard());
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<ExpiringClipboardService>();
         builder.Services.AddHostedService(provider => provider.GetRequiredService<ExpiringClipboardService>());
@@ -101,4 +97,8 @@ public sealed class DesktopWebHost : IAsyncDisposable
         try { await application.StopAsync(shutdown.Token); }
         finally { await application.DisposeAsync(); }
     }
+
+    private static INativeClipboard CreateClipboard() => OperatingSystem.IsWindows()
+        ? new WindowsNativeClipboard()
+        : new UnsupportedNativeClipboard(OperatingSystem.IsMacOS() ? "macOS" : "Linux");
 }

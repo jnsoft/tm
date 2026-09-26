@@ -17,6 +17,7 @@ input, textarea, select { padding: .4rem; max-width: 100%; box-sizing: border-bo
 .tree form { margin-block: .2rem; }
 .tree button { text-align: start; overflow-wrap: anywhere; width: 100%; }
 [aria-current="true"] { border: 2px solid Highlight; font-weight: bold; }
+[role="treeitem"][aria-selected="true"] { background: Highlight; color: HighlightText; }
 .notice { padding: .7rem; border: 2px solid Highlight; }
 details { margin-block: .5rem; }
 [data-secret] { font-family: monospace; overflow-wrap: anywhere; }

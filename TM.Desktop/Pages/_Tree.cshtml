@@ -1,19 +1,19 @@
 @using TM.Desktop.ViewModels
 @model TreeBranchViewModel
-<li>
+<li role="none">
     <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
         @Html.AntiForgeryToken()
         <input type="hidden" name="Input.Revision" value="@Model.Revision" />
         <input type="hidden" name="Input.NodeId" value="@Model.Node.Id" />
-        <button name="Input.Action" value="Select" aria-current="@(Model.Node.Selected ? "true" : null)">@Model.Node.Type: @Model.Node.Text</button>
+        <button name="Input.Action" value="Select" role="treeitem" aria-level="@Model.Level" aria-selected="@Model.Node.Selected.ToString().ToLowerInvariant()" aria-expanded="@(Model.Node.Children.Count > 0 ? Model.Node.Expanded.ToString().ToLowerInvariant() : null)" aria-current="@(Model.Node.Selected ? "true" : null)">@Model.Node.Type: @Model.Node.Text</button>
     </form>
     @if (Model.Node.Children.Count > 0)
     {
         <details open="@Model.Node.Expanded"><summary>Children (@Model.Node.Children.Count)</summary>
-            <ul>
+            <ul role="group">
                 @foreach (TreeItemViewModel child in Model.Node.Children)
                 {
-                    <partial name="_Tree" model="new TreeBranchViewModel(child, Model.Revision)" />
+                    <partial name="_Tree" model="new TreeBranchViewModel(child, Model.Revision, Model.Level + 1)" />
                 }
             </ul>
         </details>

@@ -178,7 +178,7 @@
                     <label>Search <input name="Input.Filter" value="@Model.Filter" maxlength="256" /></label>
                     <button name="Input.Action" value="Filter">Search</button>
                 </form>
-                <ul class="tree">
+                <ul class="tree" role="tree" aria-label="Project and task tree">
                     @foreach (TreeItemViewModel node in Model.Tree)
                     {
                         <partial name="_Tree" model="new TreeBranchViewModel(node, Model.Revision)" />

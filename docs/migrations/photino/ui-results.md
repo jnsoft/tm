@@ -76,6 +76,22 @@ Commit this tested slice on photino-04-ui, then create photino-05-tools from tha
 - Manually validate shortcut behavior in the Photino WebView, including macOS modifier conventions when that target is introduced, keyboard focus, screen readers, browser-reserved combinations and high-DPI layout.
 - Broader accessibility/native interaction acceptance, Windows distribution validation and non-Windows key-protection/native-service replacements remain before task 06 can begin.
 
+## Workspace semantic accessibility checkpoint
+
+### Delivered
+- Added ARIA tree, group and treeitem semantics to the Razor workspace tree, including a descriptive tree label, server-owned hierarchy levels, selected/current state and expanded state.
+- Retained button-based selection and htmx form behavior so keyboard operation remains routed through the existing antiforgery/revision-protected workspace service.
+- Added a high-contrast selected-tree-item style using system highlight colors. Existing workspace notices and diagnostics retain their polite live-region behavior.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **182 passed, 0 failed, 0 skipped**.
+- Added HTTP rendering coverage for tree hierarchy roles, label, levels, group structure, selected/current state, and server-owned collapsed/expanded state.
+
+### Remaining UI and release work
+- Manually test the Photino WebView using a screen reader, keyboard-only navigation, high-contrast mode, zoom/high DPI and native focus handling. Automated markup tests cannot establish assistive-technology behavior.
+- Windows native acceptance, distribution/offline packaging validation, and non-Windows key-protection/native-service replacements remain before task 06 can begin.
+
 ## Accessible tree move research
 
 - Legacy WPF drag/drop validates that source and target differ, rejects moves into a source descendant, and rejects non-protected nodes targeting protected nodes. A move into a node deep-copies non-protected source types into the valid child type, expands/recalculates the target and applies its due-date boundary; moving a non-protected node with no target promotes it to a root project.

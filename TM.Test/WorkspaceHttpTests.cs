@@ -299,6 +299,28 @@ public sealed class WorkspaceHttpTests
     }
 
     [TestMethod]
+    public async Task WorkspaceTree_RendersAccessibleHierarchyAndStateAsync()
+    {
+        await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());
+        await browser.PostAsync("New", ("Password", "test-password"));
+        await browser.PostAsync("Add", ("NodeType", "Project"), ("Name", "Root"));
+        string root = browser.EditorId;
+        await browser.PostAsync("Add", ("NodeType", "Task"), ("NodeId", root), ("Name", "Child"));
+        string child = browser.EditorId;
+        Assert.IsTrue(browser.Html.Contains("role=\"tree\" aria-label=\"Project and task tree\"", StringComparison.Ordinal));
+        Assert.IsTrue(browser.Html.Contains("role=\"treeitem\" aria-level=\"1\"", StringComparison.Ordinal));
+        Assert.IsTrue(browser.Html.Contains("role=\"treeitem\" aria-level=\"2\"", StringComparison.Ordinal));
+        Assert.IsTrue(browser.Html.Contains("role=\"group\"", StringComparison.Ordinal));
+        await browser.PostAsync("Select", ("NodeId", child));
+        Assert.IsTrue(browser.Html.Contains("aria-selected=\"true\"", StringComparison.Ordinal));
+        Assert.IsTrue(browser.Html.Contains("aria-current=\"true\"", StringComparison.Ordinal));
+        await browser.PostAsync("CollapseTree");
+        Assert.IsTrue(browser.Html.Contains("aria-expanded=\"false\"", StringComparison.Ordinal));
+        await browser.PostAsync("ExpandTree");
+        Assert.IsTrue(browser.Html.Contains("aria-expanded=\"true\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task MovePosts_UseServerOwnedTargetsAndRejectInvalidMovesAsync()
     {
         await using HttpWorkspace browser = await HttpWorkspace.CreateAsync(new TestProjectFileDialogs());

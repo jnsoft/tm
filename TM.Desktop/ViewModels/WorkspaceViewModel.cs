@@ -48,7 +48,7 @@ public sealed class WorkspaceCommand
 
 public sealed record TreeItemViewModel(string Id, string Text, ProjectItemType Type, bool Selected, bool Expanded,
     IReadOnlyList<TreeItemViewModel> Children);
-public sealed record TreeBranchViewModel(TreeItemViewModel Node, long Revision);
+public sealed record TreeBranchViewModel(TreeItemViewModel Node, long Revision, int Level = 1);
 public sealed record EditorViewModel(string Id, string Name, ProjectItemType Type, string Description,
     string Login, string Url, Priority Priority, Difficulty Difficulty, DateTime? DueDate, int Progress, bool IsLeaf);
 public sealed record TodoViewModel(string Id, string Title, DateTime? DueDate);

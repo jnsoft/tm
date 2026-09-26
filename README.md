@@ -94,3 +94,11 @@ $certificate.Thumbprint
 
 & $signtool verify /pa /v ".\artifacts\publish\TM.exe"
 ```
+###
+es. The next major step is native Linux/macOS testing.
+The remaining code work is limited to optional platform enhancements:
+•	Linux/macOS ownership-aware secret clipboard adapters.
+•	OS keyring integration for session key protection.
+•	Linux/macOS CI, publish profiles/artifacts, and release automation.
+•	Fixing the unrelated legacy WPF UI Automation test.
+The portable core, desktop target/RIDs, safe platform fallbacks, and password-encryption replacement are implemented. Native-host runtime, dialog, accessibility, and packaging validation are now required before claiming cross-platform support.

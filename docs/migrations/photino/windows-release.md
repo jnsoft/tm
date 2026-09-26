@@ -18,9 +18,10 @@ The `Windows-x64-Folder` profile intentionally keeps files unpacked and ReadyToR
 
 The repository's `.github/workflows/dotnet.yml` builds and tests on `windows-latest`, then creates a separately verified `photino-win-x64` workflow artifact from this same profile. Tag builds also attach a `TM-Photino-win-x64.zip` containing the complete folder publish to the GitHub release. The existing legacy WPF executable remains a separate release asset during migration.
 
-The workflow verifies `TM.Desktop.exe`, `wwwroot`, `Photino.NET.dll`, and `WebView2Loader.dll` before upload. It does not sign artifacts; complete the pre-sign validation and approved signing process before distributing any release asset.
+The workflow verifies `TM.Desktop.exe`, `wwwroot`, `Photino.NET.dll`, and `WebView2Loader.dll` before upload. The uploaded folder contains a sorted `SHA256SUMS.txt` manifest for every published file. Tag releases also attach `TM-Photino-win-x64.sha256`, the SHA-256 checksum for the complete ZIP. Verify both before using an artifact. The workflow does not sign artifacts; complete the pre-sign validation and approved signing process before distributing any release asset.
 
 - The local workflow-equivalent publish and ZIP check completed successfully on the checkpoint commit: the folder contained 371 files and `TM-Photino-win-x64.zip` was 50,300,549 bytes. Generated validation output was removed afterward and is not release evidence beyond this recorded result.
+- The local SHA-256 manifest and ZIP-checksum check completed successfully on the integrity checkpoint: `SHA256SUMS.txt` contained 371 entries and `TM-Photino-win-x64.zip` was 50,318,519 bytes. Generated validation output was removed afterward.
 
 ## Checkpoint evidence
 

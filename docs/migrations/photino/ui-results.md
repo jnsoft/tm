@@ -61,6 +61,21 @@ Commit this tested slice on photino-04-ui, then create photino-05-tools from tha
 - Manually validate keyboard focus movement, screen readers, high-DPI layout, pointer/touch behavior, native dialogs and dirty-close behavior in the Photino window.
 - Task 05 code/test implementation is complete but native Windows acceptance remains manual. Task 06 is blocked by UI completion, native acceptance, Windows distribution validation and a decision/implementation for non-Windows key protection and native substitutes.
 
+## Keyboard navigation parity checkpoint
+
+### Delivered
+- Ported the legacy Ctrl/Cmd shortcuts for save, lock, expand tree, collapse tree, focus selected item, sort by name, sort by date and append timestamp. Shortcuts activate the existing antiforgery/revision-protected Razor/htmx forms rather than introducing a new client mutation API.
+- The local handler ignores editable inputs, textareas, selects and content-editable elements so document and credential entry remain normal typing operations. Existing unapplied-editor guards still prevent shortcuts from discarding pending edits.
+
+### Validation
+- Visual Studio solution build succeeds; edited-source diagnostics are empty and `git diff --check` passes.
+- Combined TM.Test/TM.UITest run: **181 passed, 0 failed, 0 skipped**.
+- Added authenticated static-asset coverage for the focus-safe allowlist, all expected commands and absence of a separate `fetch` mutation path. Existing workspace HTTP/service tests cover the mapped commands.
+
+### Remaining UI and release work
+- Manually validate shortcut behavior in the Photino WebView, including macOS modifier conventions when that target is introduced, keyboard focus, screen readers, browser-reserved combinations and high-DPI layout.
+- Broader accessibility/native interaction acceptance, Windows distribution validation and non-Windows key-protection/native-service replacements remain before task 06 can begin.
+
 ## Accessible tree move research
 
 - Legacy WPF drag/drop validates that source and target differ, rejects moves into a source descendant, and rejects non-protected nodes targeting protected nodes. A move into a node deep-copies non-protected source types into the valid child type, expands/recalculates the target and applies its due-date boundary; moving a non-protected node with no target promotes it to a root project.

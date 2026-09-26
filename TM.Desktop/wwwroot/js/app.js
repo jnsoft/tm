@@ -25,7 +25,11 @@
     });
     document.addEventListener("keydown", event => {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-        const command = event.key.toLowerCase() === "s" ? "save" : event.key.toLowerCase() === "l" ? "lock" : null;
+        if (event.target.matches("input, textarea, select, [contenteditable='true']")) return;
+        const command = {
+            s: "save", l: "lock", e: "expand", r: "collapse", f: "focus-selected",
+            h: "sort-name", d: "sort-date", t: "timestamp"
+        }[event.key.toLowerCase()];
         if (!command) return;
         event.preventDefault();
         if (unappliedEdits) {

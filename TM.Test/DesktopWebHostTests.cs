@@ -108,6 +108,19 @@ public sealed class DesktopWebHostTests
     }
 
     [TestMethod]
+    public async Task KeyboardShortcutScript_UsesAllowlistedCommandsOutsideEditableControlsAsync()
+    {
+        await using DesktopWebHost host = await StartAsync();
+        using HttpClient client = CreateClient(host);
+        await AuthenticateAsync(host, client);
+        string script = await client.GetStringAsync("/js/app.js");
+        Assert.IsTrue(script.Contains("input, textarea, select, [contenteditable='true']", StringComparison.Ordinal));
+        foreach (string command in new[] { "save", "lock", "expand", "collapse", "focus-selected", "sort-name", "sort-date", "timestamp" })
+            Assert.IsTrue(script.Contains($"\"{command}\"", StringComparison.Ordinal));
+        Assert.IsFalse(script.Contains("fetch(", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task DisposeAsync_StopsListeningAsync()
     {
         DesktopWebHost host = await StartAsync();

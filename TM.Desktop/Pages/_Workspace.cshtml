@@ -167,10 +167,10 @@
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace" class="toolbar">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Input.Revision" value="@Model.Revision" />
-                    <button name="Input.Action" value="ExpandTree">Expand tree</button>
-                    <button name="Input.Action" value="CollapseTree">Collapse tree</button>
-                    <button name="Input.Action" value="SortByName">Sort tree by name</button>
-                    <button name="Input.Action" value="SortByDate">Sort tree by date</button>
+                    <button name="Input.Action" value="ExpandTree" data-command="expand">Expand tree</button>
+                    <button name="Input.Action" value="CollapseTree" data-command="collapse">Collapse tree</button>
+                    <button name="Input.Action" value="SortByName" data-command="sort-name">Sort tree by name</button>
+                    <button name="Input.Action" value="SortByDate" data-command="sort-date">Sort tree by date</button>
                 </form>
                 <form method="post" action="/?handler=Workspace" hx-post="/?handler=Workspace">
                     @Html.AntiForgeryToken()
@@ -222,7 +222,7 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />
                         <input type="hidden" name="Input.NodeId" value="@editor.Id" />
-                        <button name="Input.Action" value="FocusSelected">Focus selected item in tree</button>
+                        <button name="Input.Action" value="FocusSelected" data-command="focus-selected">Focus selected item in tree</button>
                     </form>
                     <details>
                         <summary>Move selected item</summary>
@@ -313,7 +313,7 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="Input.Revision" value="@Model.Revision" />
                         <input type="hidden" name="Input.NodeId" value="@editor.Id" />
-                        <button name="Input.Action" value="AppendTimestamp">Append timestamp to description</button>
+                        <button name="Input.Action" value="AppendTimestamp" data-command="timestamp">Append timestamp to description</button>
                     </form>
                     @if (Model.RevealedPassword is { } secret)
                     {
